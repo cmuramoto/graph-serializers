@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import com.nc.gs.core.SerializerFactory;
 import com.nc.gs.interpreter.Shape;
+import com.nc.gs.io.Sink;
 import com.nc.gs.serializers.java.lang.StringSerializer;
 import com.nc.gs.serializers.java.util.CollectionSerializer;
 import com.nc.gs.serializers.java.util.SetSerializer;
@@ -57,6 +58,8 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 		return (Class<? extends Set<?>>) c;
 	}
 
+	Sink dst = new Sink(1024);
+
 	@SuppressWarnings("unchecked")
 	@Test
 	public void PriorityQueue_Informed_WithCyclicCmp() {
@@ -77,7 +80,7 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 					Class<? extends Collection<?>> ct = (Class<? extends Collection<?>>) set.getClass();
 					CollectionSerializer cs = new CollectionSerializer(ct, type, x, false);
 
-					Collection<String> rec = probeNoValidate(cs, set);
+					Collection<String> rec = probeNoValidate(cs, set, dst);
 
 					Assert.assertArrayEquals(set.toArray(), rec.toArray());
 
@@ -107,7 +110,7 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 						Class<? extends Collection<?>> ct = (Class<? extends Collection<?>>) set.getClass();
 						CollectionSerializer cs = new CollectionSerializer(ct, type, x, y);
 
-						Collection<String> rec = probeNoValidate(cs, set);
+						Collection<String> rec = probeNoValidate(cs, set, dst);
 
 						Assert.assertArrayEquals(set.toArray(), rec.toArray());
 					}
@@ -135,7 +138,7 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 					for (boolean y : flags) {
 						CollectionSerializer cs = new CollectionSerializer(null, type, x, y);
 
-						Collection<String> rec = probeNoValidate(cs, set);
+						Collection<String> rec = probeNoValidate(cs, set, dst);
 
 						Assert.assertArrayEquals(set.toArray(), rec.toArray());
 
@@ -165,7 +168,7 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 				for (boolean x : flags) {
 					CollectionSerializer cs = new CollectionSerializer(null, type, x, false);
 
-					Collection<String> rec = probeNoValidate(cs, set);
+					Collection<String> rec = probeNoValidate(cs, set, dst);
 
 					Assert.assertArrayEquals(set.toArray(), rec.toArray());
 
@@ -195,7 +198,7 @@ public class TestSortedCollections extends AbstractRoundTripTests {
 					for (boolean y : flags) {
 						CollectionSerializer cs = new CollectionSerializer(null, type, x, y);
 
-						Collection<String> rec = probeNoValidate(cs, set);
+						Collection<String> rec = probeNoValidate(cs, set, dst);
 
 						Assert.assertArrayEquals(set.toArray(), rec.toArray());
 					}

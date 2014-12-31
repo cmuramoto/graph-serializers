@@ -742,7 +742,7 @@ public class Reifier {
 			String targetName = GenerationStrategy.prefixForSerializer(root.getName()) + _SerializerFactory.genClassSuffix;
 
 			try {
-				return (GraphSerializer) Class.forName(targetName).newInstance();
+				return (GraphSerializer) Class.forName(targetName.replace('/', '.')).newInstance();
 			} catch (ClassNotFoundException e) {
 				// ignore
 			} catch (ReflectiveOperationException e) {
@@ -775,6 +775,12 @@ public class Reifier {
 				return (GraphSerializer) load.newInstance();
 			} catch (InstantiationException | IllegalAccessException e) {
 				throw new RuntimeException(e);
+			} catch (Throwable e) {
+				try {
+					return (GraphSerializer) Class.forName(targetName.replace('/', '.')).newInstance();
+				} catch (Throwable err) {
+					return Utils.rethrow(err);
+				}
 			}
 		}
 	}

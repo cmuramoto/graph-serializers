@@ -3,7 +3,6 @@ package com.nc.gs.tests.serializers.reification;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.Date;
 
 import org.junit.Assert;
@@ -15,6 +14,7 @@ import com.nc.gs.core.Context;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.generator.Reifier;
 import com.nc.gs.io.Sink;
+import com.nc.gs.io.Source;
 import com.nc.gs.serializers.java.lang.StringSerializer;
 import com.nc.gs.serializers.java.util.DateSerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
@@ -45,9 +45,9 @@ public class TestReificationFromUserSerializers extends AbstractRoundTripTests {
 
 		dst.clear();
 
-		Method write = ser.getClass().getDeclaredMethod(_R_.writeData, Context.class, ByteBuffer.class, Date.class);
+		Method write = ser.getClass().getDeclaredMethod(_R_.writeData, Context.class, Sink.class, Date.class);
 
-		Method read = ser.getClass().getDeclaredMethod(_R_.readOpaque, Context.class, ByteBuffer.class);
+		Method read = ser.getClass().getDeclaredMethod(_R_.readOpaque, Context.class, Source.class);
 
 		try (Context c = Context.writing()) {
 			write.invoke(null, c, dst, now);
@@ -86,9 +86,9 @@ public class TestReificationFromUserSerializers extends AbstractRoundTripTests {
 
 		dst.clear();
 
-		Method write = ser.getClass().getDeclaredMethod(_R_.writeData, Context.class, ByteBuffer.class, String.class);
+		Method write = ser.getClass().getDeclaredMethod(_R_.writeData, Context.class, Sink.class, String.class);
 
-		Method read = ser.getClass().getDeclaredMethod(_R_.readOpaque, Context.class, ByteBuffer.class);
+		Method read = ser.getClass().getDeclaredMethod(_R_.readOpaque, Context.class, Source.class);
 
 		try (Context c = Context.writing()) {
 			write.invoke(null, c, dst, "42");

@@ -10,6 +10,7 @@ import org.junit.Test;
 
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.SerializerFactory;
+import com.nc.gs.io.Sink;
 import com.nc.gs.log.Log;
 import com.nc.gs.serializers.java.util.CollectionSerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
@@ -18,6 +19,8 @@ import com.nc.gs.tests.StopWatch;
 public class BenchColSerReification extends AbstractRoundTripTests {
 
 	Random r = new Random();
+
+	Sink s = new Sink(1024 * 1024);
 
 	private void compare(Collection<Object> coll, CollectionSerializer cs, GraphSerializer gs) {
 
@@ -36,10 +39,11 @@ public class BenchColSerReification extends AbstractRoundTripTests {
 	}
 
 	private void doProbe(Collection<Object> coll, GraphSerializer gs, StopWatch sw, int n) {
+
 		sw.start(gs.getClass().getSimpleName() + "#" + n);
 
 		for (int i = 0; i < 10000; i++) {
-			probeNoValidate(gs, coll);
+			probeNoValidate(gs, coll, s);
 		}
 
 		sw.stop();
@@ -82,11 +86,11 @@ public class BenchColSerReification extends AbstractRoundTripTests {
 
 					Collection<Object> coll = makeMixedList(c, 300);
 
-					roundTrip(gs, coll);
+					roundTrip(gs, coll, s);
 
-					roundTrip(cs, coll);
+					roundTrip(cs, coll, s);
 
-					Assert.assertEquals(probeNoValidate(cs, coll), probeNoValidate(gs, coll));
+					Assert.assertEquals(probeNoValidate(cs, coll), probeNoValidate(gs, coll, s));
 
 					compare(coll, cs, gs);
 

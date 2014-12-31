@@ -7,10 +7,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.nc.gs.core.GraphSerializer;
+import com.nc.gs.io.Sink;
 import com.nc.gs.serializers.java.lang.ArraySerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
 
 public class TestArraySerReification extends AbstractRoundTripTests {
+
+	Sink dst = new Sink();
 
 	private Object[] makeMixedArray(int sz) {
 		Object[] rv = new Object[sz];
@@ -42,7 +45,7 @@ public class TestArraySerReification extends AbstractRoundTripTests {
 
 				roundTrip(as, coll);
 
-				Assert.assertArrayEquals(probeNoValidate(as, coll), probeNoValidate(gs, coll));
+				Assert.assertArrayEquals(probeNoValidate(as, coll, dst), probeNoValidate(gs, coll, dst));
 			}
 		}
 	}

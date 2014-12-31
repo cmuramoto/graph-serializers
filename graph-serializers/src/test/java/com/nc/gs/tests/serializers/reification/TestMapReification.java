@@ -15,10 +15,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import symbols.io.abstraction._Tags.ObjectShape;
+
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.SerializerFactory;
 import com.nc.gs.generator.opt.MultiMSOptimizer;
 import com.nc.gs.generator.opt.SimpleMSOptmizer;
+import com.nc.gs.interpreter.Shape;
 import com.nc.gs.serializers.java.math.BigIntegerSerializer;
 import com.nc.gs.serializers.java.util.MapSerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
@@ -47,8 +50,7 @@ public class TestMapReification extends AbstractRoundTripTests {
 		}
 	}
 
-	static Object getStaticField(Object o, String n)
-			throws ReflectiveOperationException {
+	static Object getStaticField(Object o, String n) throws ReflectiveOperationException {
 		Field field = o.getClass().getDeclaredField(n);
 		field.setAccessible(true);
 
@@ -57,9 +59,13 @@ public class TestMapReification extends AbstractRoundTripTests {
 
 	Random r = new Random();
 
+	@Before
+	public void beforeMethod() {
+		org.junit.Assume.assumeTrue(!SerializerFactory.serializer(BigInteger.class).getClass().isSynthetic());
+	}
+
 	@SuppressWarnings("unchecked")
-	private Map<Object, Object> createMixed(Class<? extends Map<?, ?>> mapType,
-			int sz) {
+	private Map<Object, Object> createMixed(Class<? extends Map<?, ?>> mapType, int sz) {
 
 		Map<Object, Object> rv;
 
@@ -67,28 +73,19 @@ public class TestMapReification extends AbstractRoundTripTests {
 			rv = new THashMap<>();
 		} else {
 			if (SortedMap.class.isAssignableFrom(mapType)) {
-				rv = (Map<Object, Object>) SerializerFactory.instantiatorOf(
-						mapType).allocate(sz, new PolyComparator());
+				rv = (Map<Object, Object>) SerializerFactory.instantiatorOf(mapType).allocate(sz, new PolyComparator());
 			} else {
 
-				rv = (Map<Object, Object>) SerializerFactory.instantiatorOf(
-						mapType).allocate(sz);
+				rv = (Map<Object, Object>) SerializerFactory.instantiatorOf(mapType).allocate(sz);
 			}
 		}
 
 		Random r = this.r;
 
 		for (int i = 0; i < sz; i++) {
-			Object key = (r.nextInt(Integer.MAX_VALUE) & 1) == 0 ? String
-					.valueOf(i) : new Byte((byte) r.nextInt());
+			Object key = (r.nextInt(Integer.MAX_VALUE) & 1) == 0 ? String.valueOf(i) : new Byte((byte) r.nextInt());
 
-			Object val = (r.nextInt(Integer.MAX_VALUE) & 1) == 0 ? new Long(
-					r.nextLong())
-					: new BigInteger(String.format("%d%d%d%d",
-							r.nextInt(Integer.MAX_VALUE),
-							r.nextInt(Integer.MAX_VALUE),
-							r.nextInt(Integer.MAX_VALUE),
-							r.nextInt(Integer.MAX_VALUE)));
+			Object val = (r.nextInt(Integer.MAX_VALUE) & 1) == 0 ? new Long(r.nextLong()) : new BigInteger(String.format("%d%d%d%d", r.nextInt(Integer.MAX_VALUE), r.nextInt(Integer.MAX_VALUE), r.nextInt(Integer.MAX_VALUE), r.nextInt(Integer.MAX_VALUE)));
 
 			rv.put(key, val);
 		}
@@ -99,10 +96,12 @@ public class TestMapReification extends AbstractRoundTripTests {
 	@Test
 	public void testMultiple() throws Exception {
 
-		boolean[] ops = new boolean[] { true, false };
+		boolean[] ops = new boolean[]{ true, false };
 
-		Class<? extends Map<?, ?>>[] mapTypes = newMapTypeArray(null,
-				HashMap.class, TreeMap.class);
+		Class<? extends Map<?, ?>>[] mapTypes = newMapTypeArray(null, HashMap.class, TreeMap.class);
+
+		Shape ks = Shape.stateless(ObjectShape.MAP);
+		Shape vs = Shape.stateless(ObjectShape.MAP);
 
 		Class<?>[] keyTypes = { String.class, Byte.class };
 
@@ -116,13 +115,9 @@ public class TestMapReification extends AbstractRoundTripTests {
 					for (boolean z : ops) {
 						for (boolean w : ops) {
 
-							GraphSerializer opt = MultiMSOptimizer
-									.rawOptimized(mapType, keyTypes, valTypes,
-											MAP.clone().with(x, y), MAP.clone().with(z, w),
-											true);
+							GraphSerializer opt = MultiMSOptimizer.rawOptimized(mapType, keyTypes, valTypes, ks.with(x, y), vs.with(z, w), true);
 
-							MapSerializer ms = new MapSerializer(mapType, null,
-									null, x, y, z, w);
+							MapSerializer ms = new MapSerializer(mapType, null, null, x, y, z, w);
 
 							roundTrip(ms, map);
 
@@ -135,19 +130,15 @@ public class TestMapReification extends AbstractRoundTripTests {
 		}
 	}
 
-	@Before
-	public void beforeMethod() {
-		org.junit.Assume.assumeTrue(!SerializerFactory
-				.serializer(BigInteger.class).getClass().isSynthetic());
-	}
-
 	@Test
 	public void testSimple() throws Exception {
 
-		Class<? extends Map<?, ?>>[] mapTypes = newMapTypeArray(TreeMap.class,
-				null, HashMap.class);
+		Class<? extends Map<?, ?>>[] mapTypes = newMapTypeArray(TreeMap.class, null, HashMap.class);
 
-		boolean[] ops = new boolean[] { true, false };
+		boolean[] ops = new boolean[]{ true, false };
+
+		Shape ks = Shape.stateless(ObjectShape.MAP);
+		Shape vs = Shape.stateless(ObjectShape.MAP);
 
 		for (Class<? extends Map<?, ?>> mapType : mapTypes) {
 
@@ -156,22 +147,14 @@ public class TestMapReification extends AbstractRoundTripTests {
 					for (boolean z : ops) {
 						for (boolean w : ops) {
 
-							GraphSerializer left = SimpleMSOptmizer
-									.rawOptimized(mapType, String.class,
-											MAP.clone().with(x, y), BigInteger.class,
-											MAP.clone().with(z, w));
+							GraphSerializer left = SimpleMSOptmizer.rawOptimized(mapType, String.class, ks.with(x, y), BigInteger.class, vs.with(z, w));
 
 							// Non-reified are embeded for delegation
-							Assert.assertTrue(getStaticField(left, "vs")
-									.getClass() == BigIntegerSerializer.class);
+							Assert.assertTrue(getStaticField(left, "vs").getClass() == BigIntegerSerializer.class);
 
-							GraphSerializer right = SimpleMSOptmizer
-									.rawOptimized(mapType, BigInteger.class,
-											MAP.clone().with(x, y), String.class,
-											MAP.clone().with(z, w));
+							GraphSerializer right = SimpleMSOptmizer.rawOptimized(mapType, BigInteger.class, ks.with(x, y), String.class, vs.with(z, w));
 
-							Assert.assertTrue(getStaticField(right, "ks")
-									.getClass() == BigIntegerSerializer.class);
+							Assert.assertTrue(getStaticField(right, "ks").getClass() == BigIntegerSerializer.class);
 
 						}
 					}

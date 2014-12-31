@@ -96,8 +96,8 @@ public final class SerializerFactory {
 			Class<?> compType = shape.hasPolymorphicHierarchy() ? null : shape.hierarchy().uniqueConcrete();
 			if (colType == null && compType == null) {
 				rv = shape.disregardRefs() ? //
-				shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
-						: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
+						shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
+								: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
 			} else {
 				rv = new CollectionSerializer(colType, compType, shape.canBeNull(), shape.disregardRefs());
 			}
@@ -323,8 +323,4 @@ public final class SerializerFactory {
 	private static final GenerationStrategy STRATEGY = GenerationStrategy.FULL_HIERARCHY;
 
 	private static final SerializerLookup ROOT_LOOKUP = new SerializerLookup.Basic(0);
-
-	static {
-		Genesis.bootstrap();
-	}
 }

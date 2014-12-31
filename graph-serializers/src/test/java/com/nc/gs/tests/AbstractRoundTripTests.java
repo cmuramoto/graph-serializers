@@ -64,14 +64,17 @@ public abstract class AbstractRoundTripTests {
 		return rv;
 	}
 
+	@Deprecated
 	public static <T> T probe(T o) {
 		return probe(o, true);
 	}
 
+	@Deprecated
 	public static <T> T probe(T o, boolean validate) {
 		return probe(SerializerFactory.serializer(o.getClass()), o, validate);
 	}
 
+	@Deprecated
 	public static <T> T probeNoValidate(GraphSerializer gs, T o) {
 		return probe(gs, o, false);
 	}
@@ -147,6 +150,23 @@ public abstract class AbstractRoundTripTests {
 		return (T) rec;
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T> T roundTrip(GraphSerializer gs, T root, Sink dst) {
+		Assert.assertNotNull("Root object cannot be null.", root);
+
+		Object rec = probeNoValidate(gs, root, dst);
+
+		Assert.assertNotSame(rec, root);
+
+		if (root.getClass().isArray()) {
+			Assert.assertTrue(Arrays.deepEquals((Object[]) root, (Object[]) rec));
+		} else {
+			Assert.assertEquals(root, rec);
+		}
+
+		return (T) rec;
+	}
+
 	public static <T> T roundTrip(T root) {
 		Assert.assertNotNull("Root object cannot be null.", root);
 		return roundTrip(SerializerFactory.serializer(root.getClass()), root);
@@ -157,8 +177,6 @@ public abstract class AbstractRoundTripTests {
 	public static Shape SET = Shape.stateless(ObjectShape.SET);
 
 	public static Shape ARRAY = Shape.stateless(ObjectShape.ARRAY);
-
-	public static Shape MAP = Shape.stateless(ObjectShape.MAP);
 
 	public static ThreadLocal<ByteBuffer> PROBES = new ThreadLocal<ByteBuffer>() {
 

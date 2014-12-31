@@ -13,10 +13,14 @@ import java.util.TreeMap;
 import org.junit.Assert;
 import org.junit.Test;
 
+import symbols.io.abstraction._Tags.ObjectShape;
+
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.Instantiator;
 import com.nc.gs.core.SerializerFactory;
 import com.nc.gs.generator.opt.MultiMSOptimizer;
+import com.nc.gs.interpreter.Shape;
+import com.nc.gs.io.Sink;
 import com.nc.gs.log.Log;
 import com.nc.gs.serializers.java.util.MapSerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
@@ -46,6 +50,8 @@ public class BenchMapSerReification extends AbstractRoundTripTests {
 
 	}
 
+	Sink s = new Sink();
+
 	private static final int MAX_PROBE_LOOPS = 1000;
 
 	Random r = new Random();
@@ -69,7 +75,7 @@ public class BenchMapSerReification extends AbstractRoundTripTests {
 		sw.start(gs.getClass().getSimpleName() + "#" + n);
 
 		for (int i = 0; i < MAX_PROBE_LOOPS; i++) {
-			probeNoValidate(gs, graph);
+			probeNoValidate(gs, graph, s);
 		}
 
 		sw.stop();
@@ -132,7 +138,7 @@ public class BenchMapSerReification extends AbstractRoundTripTests {
 			long l = r.nextLong();
 
 			if (l % 3 == 0) {
-				o = r.nextDouble() * l;
+				o = r.nextDouble();
 			} else if (l % 5 == 0) {
 				o = Short.valueOf((short) l);
 			} else {
@@ -149,6 +155,9 @@ public class BenchMapSerReification extends AbstractRoundTripTests {
 	@Test
 	public void testMulti() throws Exception {
 
+		Shape ks = Shape.stateless(ObjectShape.MAP);
+		Shape vs = Shape.stateless(ObjectShape.MAP);
+
 		Class<?>[] keyTypes = { String.class, Long.class, Integer.class };
 
 		Class<?>[] valTypes = { Short.class, BigInteger.class, Double.class };
@@ -159,17 +168,17 @@ public class BenchMapSerReification extends AbstractRoundTripTests {
 				for (boolean y : state) {
 					for (boolean z : state) {
 						for (boolean w : state) {
-							GraphSerializer ms = MultiMSOptimizer.rawOptimized(c, keyTypes, valTypes, MAP.with(x, y), MAP.with(z, w), true);
+							GraphSerializer ms = MultiMSOptimizer.rawOptimized(c, keyTypes, valTypes, ks.with(x, y), vs.with(z, w), true);
 
 							MapSerializer gs = new MapSerializer(c, null, null, x, y, z, w);
 
 							Map<Object, Object> map = makeMap(c, 300);
 
-							roundTrip(gs, map);
+							roundTrip(gs, map, s);
 
-							roundTrip(ms, map);
+							roundTrip(ms, map, s);
 
-							Assert.assertEquals(probeNoValidate(gs, map), probeNoValidate(ms, map));
+							Assert.assertEquals(probeNoValidate(gs, map, s), probeNoValidate(ms, map, s));
 
 							compare(map, ms, gs);
 						}
