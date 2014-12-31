@@ -9,7 +9,7 @@ This framework is a non-invasive, inheritance-based serialization solution, that
 
 ##### Features
 
-This library is intended to be use as a serialization library for (possibly) cyclic domain models and can be optimized to work with flat models (no cyclic detection) with a field-level glanularity. For example, supose we have the following class:
+This library is intended to be used as a serialization library for (possibly) cyclic domain models and can be optimized to work with flat models (no cyclic detection) with a field-level glanularity. For example, supose we have the following class:
 
 ```java
 public class Node {
