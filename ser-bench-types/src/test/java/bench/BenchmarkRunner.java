@@ -26,25 +26,14 @@ public class BenchmarkRunner {
 	public static void main(String... args) throws Exception {
 		BenchmarkRunner runner = new BenchmarkRunner();
 
-		// then language default serializers
-		// .addObjectSerializer(new JavaSerializer());
-		runner.addObjectSerializer(new GSImpl());
-		// runner.addObjectSerializer(new GSHeapBB());
-		runner.addObjectSerializer(new ProtobufSerializer());
-		runner.addObjectSerializer(new ThriftSerializer());
+		for (int i = 0; i < 5; i++) {
+			runner.addObjectSerializer(new ProtobufSerializer());
+			runner.addObjectSerializer(new GSImpl());
+			runner.addObjectSerializer(new ThriftSerializer());
+			runner.addObjectSerializer(new JavaSerializer());
+		}
 
-		runner.addObjectSerializer(new JavaSerializer());
-		runner.addObjectSerializer(new ThriftSerializer());
-		runner.addObjectSerializer(new GSImpl());
-		runner.addObjectSerializer(new ProtobufSerializer());
-		// runner.addObjectSerializer(new GSHeapBB());
 		System.out.println("Starting");
-
-		runner.addObjectSerializer(new JavaSerializer());
-		runner.addObjectSerializer(new ProtobufSerializer());
-		runner.addObjectSerializer(new GSImpl());
-		runner.addObjectSerializer(new ThriftSerializer());
-		// runner.addObjectSerializer(new GSHeapBB());
 
 		runner.start();
 	}
@@ -68,16 +57,16 @@ public class BenchmarkRunner {
 	private void addValue(EnumMap<measurements, Map<String, Double>> values, String name, double timeCreate, double timeSerializeDifferentObjects, double timeSerializeSameObject, double timeDeserializeNoFieldAccess, double timeDeserializeAndCheckMediaField, double timeDeserializeAndCheckAllFields, double totalTime, double length) {
 		// Omit some charts for serializers that are extremely slow.
 		if (!name.equals("json/google-gson") && !name.equals("scala")) {
-			values.get(measurements.timeSerializeDifferentObjects).put(name, timeSerializeDifferentObjects);
-			values.get(measurements.timeCreateAndSerialize).put(name, timeCreate + timeSerializeDifferentObjects);
-			values.get(measurements.timeSerializeSameObject).put(name, timeSerializeSameObject);
-			values.get(measurements.timeDeserializeNoFieldAccess).put(name, timeDeserializeNoFieldAccess);
-			values.get(measurements.timeDeserializeAndCheckMediaField).put(name, timeDeserializeAndCheckMediaField);
-			values.get(measurements.timeDeserializeAndCheckAllFields).put(name, timeDeserializeAndCheckAllFields);
-			values.get(measurements.totalTime).put(name, totalTime);
+			update(values, measurements.timeSerializeDifferentObjects, name, timeSerializeDifferentObjects);
+			update(values, measurements.timeCreateAndSerialize, name, timeCreate + timeSerializeDifferentObjects);
+			update(values, measurements.timeSerializeSameObject, name, timeSerializeSameObject);
+			update(values, measurements.timeDeserializeNoFieldAccess, name, timeDeserializeNoFieldAccess);
+			update(values, measurements.timeDeserializeAndCheckMediaField, name, timeDeserializeAndCheckMediaField);
+			update(values, measurements.timeDeserializeAndCheckAllFields, name, timeDeserializeAndCheckAllFields);
+			update(values, measurements.totalTime, name, totalTime);
 		}
-		values.get(measurements.length).put(name, length);
-		values.get(measurements.timeCreate).put(name, timeCreate);
+		update(values, measurements.length, name, length);
+		update(values, measurements.timeCreate, name, timeCreate);
 	}
 
 	/**
@@ -307,6 +296,15 @@ public class BenchmarkRunner {
 			addValue(values, serializer.getName(), timeCreate, timeSerializeDifferentObjects, timeSerializeSameObject, timeDeserializeNoFieldAccess, timeDeserializeAndCheckMediaField, timeDeserializeAndCheckAllFields, totalTime, array.length);
 		}
 		printImages(values);
+	}
+
+	private void update(EnumMap<measurements, Map<String, Double>> values, measurements m, String name, double v) {
+		Double d = values.get(m).get(name);
+
+		if (d == null || d > v) {
+			values.get(m).put(name, v);
+		}
+
 	}
 
 	private <T> void warmCreation(ObjectSerializer<T> serializer) throws Exception {

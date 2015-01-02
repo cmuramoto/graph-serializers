@@ -97,7 +97,7 @@ public final class SetSerializer extends GraphSerializer {
 
 		CollectionSerializer.readExtensions(c, src, s, ctor, this.s);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz == 0) {
 			return;
@@ -159,17 +159,17 @@ public final class SetSerializer extends GraphSerializer {
 
 			src.mark();
 
-			int k = src.readIntP();
+			int k = src.readVarInt();
 
 			sorted = (k & ObjectShape.SORTED) != 0;
 
-			v = src.readIntP();
+			v = src.readVarInt();
 		} else {
 			sorted = (s & ObjectShape.SORTED) != 0;
 
 			src.mark();
 
-			v = src.readIntP();
+			v = src.readVarInt();
 		}
 
 		if (sorted) {
@@ -197,7 +197,7 @@ public final class SetSerializer extends GraphSerializer {
 		CollectionSerializer.writeExtensions(c, dst, s, this.s);
 		// writeExtensions(c, dst, s, ctor == null, op);
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz == 0) {
 			return;

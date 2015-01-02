@@ -53,7 +53,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 
 	byte[] chunk() {
 		byte[] b = chunk;
-		int p = (int) (pos - base);
+		int p = pos;
 
 		if (b == null || b.length < p) {
 			b = chunk = new byte[p];
@@ -83,7 +83,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		pos = p;
 
 		if (lim < 48) {
-			writeLongP(mask | 1L << lim + 1);
+			writeVarLong(mask | 1L << lim + 1);
 		} else {
 			writeLong(mask);
 		}
@@ -96,15 +96,37 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	}
 
 	public void flushTo(DataOutput target) throws IOException {
-
 		if (target != null && target != this) {
 			if (target instanceof Sink) {
-
+				((Sink) target).base = base;
 			} else {
-				target.write(chunk(), 0, (int) (pos - base));
+				target.write(chunk(), 0, pos);
 			}
 		}
+	}
 
+	public void flushTo(DataOutput target, byte[] chunk) throws IOException {
+
+		if (target != null) {
+			int len = chunk.length;
+			int p = pos;
+
+			if (len >= p) {
+				Bits.copyTo(base, chunk, 0, p);
+				target.write(chunk, 0, p);
+			} else {
+				int r = pos;
+				long addr = base;
+
+				while (r > 0) {
+					int nb = Math.min(len, r);
+
+					Bits.copyTo(addr, chunk, 0, nb);
+					target.write(chunk, 0, nb);
+					r -= nb;
+				}
+			}
+		}
 	}
 
 	void guard(int req) {
@@ -141,95 +163,12 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		return source;
 	}
 
-	public final void packL(long value) {
-		Unsafe u = U;
-		long b = base + pos;
-		if (value >>> 7 == 0) {
-			u.putByte(b, (byte) value);
-			pos++;
-			return;
-		}
-		if (value >>> 14 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b, (byte) (value >>> 7));
-			pos += 2;
-			return;
-		}
-		if (value >>> 21 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b, (byte) (value >>> 14));
-			pos += 3;
-			return;
-		}
-		if (value >>> 28 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b++, (byte) (value >>> 14 | 0x80));
-			u.putByte(b, (byte) (value >>> 21));
-			pos += 4;
-			return;
-		}
-		if (value >>> 35 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b++, (byte) (value >>> 14 | 0x80));
-			u.putByte(b++, (byte) (value >>> 21 | 0x80));
-			u.putByte(b, (byte) (value >>> 28));
-			pos += 5;
-			return;
-		}
-		if (value >>> 42 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b++, (byte) (value >>> 14 | 0x80));
-			u.putByte(b++, (byte) (value >>> 21 | 0x80));
-			u.putByte(b++, (byte) (value >>> 28 | 0x80));
-			u.putByte(b, (byte) (value >>> 35));
-			pos += 6;
-			return;
-		}
-		if (value >>> 49 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b++, (byte) (value >>> 14 | 0x80));
-			u.putByte(b++, (byte) (value >>> 21 | 0x80));
-			u.putByte(b++, (byte) (value >>> 28 | 0x80));
-			u.putByte(b++, (byte) (value >>> 35 | 0x80));
-			u.putByte(b, (byte) (value >>> 42));
-			pos += 7;
-			return;
-		}
-		if (value >>> 56 == 0) {
-			u.putByte(b++, (byte) (value & 0x7F | 0x80));
-			u.putByte(b++, (byte) (value >>> 7 | 0x80));
-			u.putByte(b++, (byte) (value >>> 14 | 0x80));
-			u.putByte(b++, (byte) (value >>> 21 | 0x80));
-			u.putByte(b++, (byte) (value >>> 28 | 0x80));
-			u.putByte(b++, (byte) (value >>> 35 | 0x80));
-			u.putByte(b++, (byte) (value >>> 42 | 0x80));
-			u.putByte(b, (byte) (value >>> 49));
-			pos += 8;
-			return;
-		}
-		u.putByte(b++, (byte) (value & 0x7F | 0x80));
-		u.putByte(b++, (byte) (value >>> 7 | 0x80));
-		u.putByte(b++, (byte) (value >>> 14 | 0x80));
-		u.putByte(b++, (byte) (value >>> 21 | 0x80));
-		u.putByte(b++, (byte) (value >>> 28 | 0x80));
-		u.putByte(b++, (byte) (value >>> 35 | 0x80));
-		u.putByte(b++, (byte) (value >>> 42 | 0x80));
-		u.putByte(b++, (byte) (value >>> 49 | 0x80));
-		u.putByte(b, (byte) (value >>> 56));
-		pos += 9;
-	}
-
 	public int position() {
 		return pos;
 	}
 
 	public void putIntArray(int[] mag) {
-		writeIntP(mag.length);
+		writeVarInt(mag.length);
 		write(mag, 0, mag.length);
 	}
 
@@ -269,8 +208,30 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		return b;
 	}
 
-	private void write(boolean[] o, int off, int len) {
-		Bits.writeBitMask(this, o);
+	public void write(boolean[] o, int off, int len) {
+		int loops = len >>> 6;
+		int r = len & 63;
+
+		writeVarInt(loops + (r > 0 ? 1 : 0));
+
+		int ix = off;
+		long fl;
+
+		for (int i = 0; i < loops; i++) {
+			fl = 0L;
+			for (int j = 0; i < 64; j++) {
+				fl |= (o[ix++] ? 1L : 0L) << j;
+			}
+			writeLong(fl);
+		}
+
+		if (r > 0) {
+			fl = 0L;
+			for (int i = 0; i < r; i++) {
+				fl |= (o[ix++] ? 1L : 0L) << i;
+			}
+			writeLong(fl);
+		}
 	}
 
 	@Override
@@ -336,7 +297,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 
 	@Override
 	public void writeBytes(String s) throws IOException {
-
+		writeUTF(s);
 	}
 
 	public void writeChar(char v) {
@@ -348,13 +309,12 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		writeChar((char) v);
 	}
 
-	public void writeCharP(char v) {
-		U.putChar(ix(2), v);
-	}
-
 	@Override
 	public void writeChars(String s) {
-
+		char[] src = (char[]) U.getObject(s, Utils.V_OFF);
+		final int len = src.length;
+		writeVarInt(len);
+		Bits.copyFrom(ix(len << 1), src, 0, len);
 	}
 
 	@Override
@@ -376,51 +336,18 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putInt(base + p, v);
 	}
 
-	public void writeIntP(int v) {
-		sun.misc.Unsafe u = U;
-
-		guard(5);
-
-		long b = base + pos;
-		if (v >>> 7 == 0) {
-			// guard(1);
-			U.putByte(b, (byte) v);
-			pos++;
-			return;
-		}
-		if (v >>> 14 == 0) {
-			// guard(2);
-			u.putByte(b++, (byte) (v & 0x7F | 0x80));
-			u.putByte(b, (byte) (v >>> 7));
-			pos += 2;
-			return;
-		}
-		if (v >>> 21 == 0) {
-			// guard(3);
-			u.putByte(b++, (byte) (v & 0x7F | 0x80));
-			u.putByte(b++, (byte) (v >>> 7 | 0x80));
-			u.putByte(b, (byte) (v >>> 14));
-			pos += 3;
-			return;
-		}
-		if (v >>> 28 == 0) {
-			// guard(4);
-			u.putByte(b++, (byte) (v & 0x7F | 0x80));
-			u.putByte(b++, (byte) (v >>> 7 | 0x80));
-			u.putByte(b++, (byte) (v >>> 14 | 0x80));
-			u.putByte(b, (byte) (v >>> 21));
-			pos += 4;
-			return;
-		}
-
-		// guard(5);
-		u.putByte(b++, (byte) (v & 0x7F | 0x80));
-		u.putByte(b++, (byte) (v >>> 7 | 0x80));
-		u.putByte(b++, (byte) (v >>> 14 | 0x80));
-		u.putByte(b++, (byte) (v >>> 21 | 0x80));
-		u.putByte(b, (byte) (v >>> 28));
-		pos += 5;
-	}
+	// protobuf impl
+	// public void writeVarInt(int v) {
+	// while (true) {
+	// if ((v & ~0x7F) == 0) {
+	// writeByte(v);
+	// return;
+	// } else {
+	// writeByte(v & 0x7F | 0x80);
+	// v >>>= 7;
+	// }
+	// }
+	// }
 
 	public void writeLong(int p, long v) {
 		U.putLong(base + p, v);
@@ -431,7 +358,144 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putLong(ix(8), v);
 	}
 
-	public void writeLongP(long v) {
+	// protobuf impl
+	// public void writeVarlLong(long v) {
+	// while (true) {
+	// if ((v & ~0x7FL) == 0) {
+	// write((int) v);
+	// return;
+	// } else {
+	// write((int) v & 0x7F | 0x80);
+	// v >>>= 7;
+	// }
+	// }
+	// }
+
+	public void writePrimitiveArray(int k, Object o) {
+
+		int len = Array.getLength(o);
+		switch (k) {
+		case Type.BOOLEAN:
+			write((boolean[]) o, 0, len);
+			break;
+		case Type.CHAR:
+			write((char[]) o, 0, len);
+			break;
+		case Type.BYTE:
+			write((byte[]) o, 0, len);
+			break;
+		case Type.SHORT:
+			write((short[]) o, 0, len);
+			break;
+		case Type.INT:
+			write((int[]) o, 0, len);
+			break;
+		case Type.FLOAT:
+			write((float[]) o, 0, len);
+			break;
+		case Type.LONG:
+			write((long[]) o, 0, len);
+			break;
+		case Type.DOUBLE:
+			write((double[]) o, 0, len);
+			break;
+		}
+	}
+
+	@Override
+	public void writeShort(int v) {
+		U.putShort(ix(2), (short) v);
+	}
+
+	public void writeShort(short v) {
+		U.putShort(ix(2), v);
+	}
+
+	@Override
+	public void writeUTF(String s) {
+		char[] value = (char[]) U.getObject(s, Utils.V_OFF);
+		final int len = value.length;
+		writeVarInt(len);
+		int c;
+
+		for (int i = 0; i < len; i++) {
+			c = value[i];
+			if (c <= 0x007F) {
+				writeByte((byte) c);
+			} else if (c > 0x07FF) {
+				writeByte((byte) (0xE0 | c >> 12 & 0x0F));
+				writeByte((byte) (0x80 | c >> 6 & 0x3F));
+				writeByte((byte) (0x80 | c >> 0 & 0x3F));
+			} else {
+				writeByte((byte) (0xC0 | c >> 6 & 0x1F));
+				writeByte((byte) (0x80 | c >> 0 & 0x3F));
+			}
+		}
+	}
+
+	public void writeVarChar(char c) {
+		if (c <= 0x007F) {
+			writeByte((byte) c);
+		} else if (c > 0x07FF) {
+			writeByte((byte) (0xE0 | c >> 12 & 0x0F));
+			writeByte((byte) (0x80 | c >> 6 & 0x3F));
+			writeByte((byte) (0x80 | c >> 0 & 0x3F));
+		} else {
+			writeByte((byte) (0xC0 | c >> 6 & 0x1F));
+			writeByte((byte) (0x80 | c >> 0 & 0x3F));
+		}
+	}
+
+	public void writeVarDouble(double d) {
+		writeDouble(d);
+	}
+
+	public void writeVarFloat(float f) {
+		writeFloat(f);
+	}
+
+	public void writeVarInt(int v) {
+		sun.misc.Unsafe u = U;
+
+		guard(5);
+
+		long b = base + pos;
+		if (v >>> 7 == 0) {
+			U.putByte(b, (byte) v);
+			pos++;
+			return;
+		}
+		if (v >>> 14 == 0) {
+			u.putByte(b++, (byte) (v & 0x7F | 0x80));
+			u.putByte(b, (byte) (v >>> 7));
+			pos += 2;
+			return;
+		}
+		if (v >>> 21 == 0) {
+			u.putByte(b++, (byte) (v & 0x7F | 0x80));
+			u.putByte(b++, (byte) (v >>> 7 | 0x80));
+			u.putByte(b, (byte) (v >>> 14));
+			pos += 3;
+			return;
+		}
+		if (v >>> 28 == 0) {
+			u.putByte(b++, (byte) (v & 0x7F | 0x80));
+			u.putByte(b++, (byte) (v >>> 7 | 0x80));
+			u.putByte(b++, (byte) (v >>> 14 | 0x80));
+			u.putByte(b, (byte) (v >>> 21));
+			pos += 4;
+			return;
+		}
+
+		u.putByte(b++, (byte) (v & 0x7F | 0x80));
+		u.putByte(b++, (byte) (v >>> 7 | 0x80));
+		u.putByte(b++, (byte) (v >>> 14 | 0x80));
+		u.putByte(b++, (byte) (v >>> 21 | 0x80));
+		u.putByte(b, (byte) (v >>> 28));
+		pos += 5;
+	}
+
+	public void writeVarLong(long v) {
 		Unsafe u = U;
 		guard(9);
 		long b = base + pos;
@@ -524,47 +588,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		pos += 9;
 	}
 
-	public void writePrimitiveArray(int k, Object o) {
-
-		int len = Array.getLength(o);
-		switch (k) {
-		case Type.BOOLEAN:
-			write((boolean[]) o, 0, len);
-			break;
-		case Type.CHAR:
-			write((char[]) o, 0, len);
-			break;
-		case Type.BYTE:
-			write((byte[]) o, 0, len);
-			break;
-		case Type.SHORT:
-			write((short[]) o, 0, len);
-			break;
-		case Type.INT:
-			write((int[]) o, 0, len);
-			break;
-		case Type.FLOAT:
-			write((float[]) o, 0, len);
-			break;
-		case Type.LONG:
-			write((long[]) o, 0, len);
-			break;
-		case Type.DOUBLE:
-			write((double[]) o, 0, len);
-			break;
-		}
-	}
-
-	@Override
-	public void writeShort(int v) {
-		U.putShort(ix(2), (short) v);
-	}
-
-	public void writeShort(short v) {
-		U.putShort(ix(2), v);
-	}
-
-	public void writeShortP(short v) {
+	public void writeVarShort(short v) {
 		guard(3);
 		if (v >= 0 && v < 255) {
 			U.putByte(pos++, (byte) v);
@@ -572,28 +596,6 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 			U.putByte(pos++, (byte) -1);
 			U.putShort(pos, v);
 			pos += 2;
-		}
-	}
-
-	@Override
-	public void writeUTF(String s) {
-		char[] value = (char[]) U.getObject(s, Utils.V_OFF);
-		final int len = value.length;
-		writeIntP(len);
-		int c;
-
-		for (int i = 0; i < len; i++) {
-			c = value[i];
-			if (c <= 0x007F) {
-				writeByte((byte) c);
-			} else if (c > 0x07FF) {
-				writeByte((byte) (0xE0 | c >> 12 & 0x0F));
-				writeByte((byte) (0x80 | c >> 6 & 0x3F));
-				writeByte((byte) (0x80 | c >> 0 & 0x3F));
-			} else {
-				writeByte((byte) (0xC0 | c >> 6 & 0x1F));
-				writeByte((byte) (0x80 | c >> 0 & 0x3F));
-			}
 		}
 	}
 }

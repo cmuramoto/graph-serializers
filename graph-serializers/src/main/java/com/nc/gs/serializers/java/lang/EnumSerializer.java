@@ -17,12 +17,12 @@ public final class EnumSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return values[src.readIntP()];
+		return values[src.readVarInt()];
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeIntP(((Enum<?>) o).ordinal());
+		dst.writeVarInt(((Enum<?>) o).ordinal());
 	}
 
 }

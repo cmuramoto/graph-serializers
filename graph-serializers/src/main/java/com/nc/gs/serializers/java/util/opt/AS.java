@@ -46,7 +46,7 @@ public class AS {
 
 		Object[] array = (Object[]) o;
 
-		dst.writeIntP(array.length);
+		dst.writeVarInt(array.length);
 
 		for (Object v : array) {
 			gs.write(c, dst, v);
@@ -64,7 +64,7 @@ public class AS {
 		int loops = len >>> 6;
 				int l = (len & 63) == 0 ? loops : loops + 1;
 
-				dst.writeIntP(loops);
+				dst.writeVarInt(loops);
 
 				int ix = 0;
 				Object v;

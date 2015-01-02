@@ -13,7 +13,7 @@ public abstract class GraphSerializer {
 	public abstract Object instantiate(Source src);
 
 	public final Object read(Context c, Source src) {
-		int id = src.readIntP();
+		int id = src.readVarInt();
 		Object rv = c.from(id);
 		if (rv == null) {
 			rv = instantiate(src);

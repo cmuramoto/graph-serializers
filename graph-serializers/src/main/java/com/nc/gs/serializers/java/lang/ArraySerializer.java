@@ -56,7 +56,7 @@ public final class ArraySerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		int len = src.readIntP();
+		int len = src.readVarInt();
 		Class<?> ct = Context.rawReadType(src);
 
 		return Array.newInstance(ct, len);
@@ -178,7 +178,7 @@ public final class ArraySerializer extends GraphSerializer {
 		Class<? extends Object> ct = clazz.getComponentType();
 
 		// for instantiate
-		dst.writeIntP(Array.getLength(o));
+		dst.writeVarInt(Array.getLength(o));
 		Context.rawWriteType(dst, ct);
 
 		if (ct.isPrimitive()) {

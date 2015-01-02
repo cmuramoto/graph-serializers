@@ -18,7 +18,7 @@ public final class CollectionSerializer extends GraphSerializer {
 
 	public static void readExtensions(Context c, Source src, Collection<?> m, Instantiator ctor, int s) {
 
-		int k = ctor != null ? s : src.readIntP();
+		int k = ctor != null ? s : src.readVarInt();
 
 		if ((k & ObjectShape.SORTED) != 0) {
 			src.mark();
@@ -31,7 +31,7 @@ public final class CollectionSerializer extends GraphSerializer {
 				}
 
 				if ((k & ObjectShape.SIZED) != 0) {
-					ctor.copy(ctor.allocate(src.readIntP(), cmp), m);
+					ctor.copy(ctor.allocate(src.readVarInt(), cmp), m);
 				} else {
 					ctor.copy(ctor.allocate(cmp), m);
 				}
@@ -144,7 +144,7 @@ public final class CollectionSerializer extends GraphSerializer {
 			state = shape.state;
 			k = shape.k;
 			Context.rawWriteReplacing(dst, o.getClass());
-			dst.writeIntP(k);
+			dst.writeVarInt(k);
 
 		} else {
 			k = s;
@@ -162,7 +162,7 @@ public final class CollectionSerializer extends GraphSerializer {
 				}
 
 				if ((k & ObjectShape.SIZED) != 0) {
-					dst.writeIntP(o.size());
+					dst.writeVarInt(o.size());
 				}
 			}
 		}
@@ -195,7 +195,7 @@ public final class CollectionSerializer extends GraphSerializer {
 
 		readExtensions(c, src, col, ctor, s);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz > 0) {
 			if ((s & ObjectShape.NULLABLE) != 0) {
@@ -220,17 +220,17 @@ public final class CollectionSerializer extends GraphSerializer {
 
 			src.mark();
 
-			int k = src.readIntP();
+			int k = src.readVarInt();
 
 			sorted = (k & ObjectShape.SORTED) != 0;
 
-			v = src.readIntP();
+			v = src.readVarInt();
 		} else {
 			sorted = (s & ObjectShape.SORTED) != 0;
 
 			src.mark();
 
-			v = src.readIntP();
+			v = src.readVarInt();
 		}
 
 		if (sorted) {
@@ -337,7 +337,7 @@ public final class CollectionSerializer extends GraphSerializer {
 
 		int sz = col.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			Iterator<Object> itr = col.iterator();

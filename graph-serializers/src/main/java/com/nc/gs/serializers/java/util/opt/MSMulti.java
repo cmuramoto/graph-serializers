@@ -40,7 +40,7 @@ public class MSMulti {
 		MapSerializer.readExtensions(c, src, o, ctor);
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		for (int i = 0; i < sz; i++) {
 			m.put(ICK_R(c, src), ICV_R(c, src));
@@ -51,7 +51,7 @@ public class MSMulti {
 		MapSerializer.readExtensions(c, src, o, ctor);
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int loops = sz >>> 6;
 		int l = (sz & 63) == 0 ? loops : loops + 1;
@@ -71,7 +71,7 @@ public class MSMulti {
 
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int nkAt = src.readInt();
 
@@ -85,7 +85,7 @@ public class MSMulti {
 
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int nkAt = src.readInt();
 
@@ -107,7 +107,7 @@ public class MSMulti {
 		Object rv;
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
 
@@ -119,7 +119,7 @@ public class MSMulti {
 	public Object instantiateSZ(Source src) {
 		src.mark();
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		src.reset();
 
@@ -135,7 +135,7 @@ public class MSMulti {
 
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		if (sorted) {
 			rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
@@ -155,7 +155,7 @@ public class MSMulti {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		Iterator<Entry<Object, Object>> itr = m.entrySet().iterator();
 
@@ -177,7 +177,7 @@ public class MSMulti {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		Iterator<Entry<Object, Object>> itr = m.entrySet().iterator();
 
@@ -214,7 +214,7 @@ public class MSMulti {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		int n = -1;
 
@@ -246,7 +246,7 @@ public class MSMulti {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		int n = -1;
 

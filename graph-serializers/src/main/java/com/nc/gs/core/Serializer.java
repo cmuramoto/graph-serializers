@@ -32,16 +32,22 @@ public final class Serializer {
 		}
 	}
 
+	public static <T> void inflateRoot(DataInput in, T instance) throws IOException {
+		try (Context c = Context.reading()) {
+			c.inflate(in, instance);
+		}
+	}
+
 	public static final Object readNested(Context c, Source src) {
 		Object rv;
 
-		int id = src.readIntP();
+		int id = src.readVarInt();
 
 		if (id == NULL_I) {
 			rv = null;
 		} else if (id == TYPE_ID) {
 			Class<?> type = c.readType(src);
-			id = src.readIntP();
+			id = src.readVarInt();
 			GraphSerializer serializer = c.forType(type);
 			rv = serializer.instantiate(src);
 			c.mark(rv, id);
@@ -101,9 +107,9 @@ public final class Serializer {
 		}
 	}
 
-	public static <T> void writeRoot(DataOutput out, T o) throws IOException {
+	public static <T> void writeRoot(DataOutput out, T o, boolean wt) throws IOException {
 		try (Context c = Context.writing()) {
-			c.write(out, o);
+			c.write(out, o, wt);
 		}
 	}
 

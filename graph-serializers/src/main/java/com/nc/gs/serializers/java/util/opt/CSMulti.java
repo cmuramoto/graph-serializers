@@ -32,7 +32,7 @@ public final class CSMulti {
 
 		CollectionSerializer.readExtensions(c, src, col, ctor, SHAPE);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		for (int i = 0; i < sz; i++) {
 			col.add(IC_R(c, src));
@@ -44,7 +44,7 @@ public final class CSMulti {
 
 		CollectionSerializer.readExtensions(c, src, col, ctor, SHAPE);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz == 0) {
 			return;
@@ -75,7 +75,7 @@ public final class CSMulti {
 
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		// if (sorted) {
 		rv = v == ObjectShape.NON_SORTED ? ctor.allocate() : ctor.allocateHollow();
@@ -90,7 +90,7 @@ public final class CSMulti {
 
 	public Object instantiateKSZ(Source src) {
 		src.mark();
-		Object rv = ctor.allocate(src.readIntP());
+		Object rv = ctor.allocate(src.readVarInt());
 		src.reset();
 
 		return rv;
@@ -103,11 +103,11 @@ public final class CSMulti {
 
 		src.mark();
 
-		int k = src.readIntP();
+		int k = src.readVarInt();
 
 		boolean sorted = (k & ObjectShape.SORTED) != 0;
 
-		k = src.readIntP();
+		k = src.readVarInt();
 
 		if (sorted) {
 			rv = k == ObjectShape.NON_SORTED ? ctor.allocate() : ctor.allocateHollow();
@@ -126,7 +126,7 @@ public final class CSMulti {
 		CollectionSerializer.writeExtensions(c, dst, col, SHAPE);
 
 		int sz = col.size();
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			Iterator<Object> left = col.iterator();
@@ -144,7 +144,7 @@ public final class CSMulti {
 
 		int sz = col.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			int loops = sz >>> 6;

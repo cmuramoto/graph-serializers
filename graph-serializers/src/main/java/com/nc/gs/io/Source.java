@@ -33,7 +33,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
 
-	Object src;
+	byte[] chunk;
 
 	protected long base;
 
@@ -42,6 +42,17 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	protected int mark;
 
 	protected int lim;
+
+	static RuntimeException W = new RuntimeException("Wrong VLen Encoding");
+
+	public Source() {
+		this(4096);
+	}
+
+	public Source(int initialSize) {
+		lim = Utils.nextPowerOfTwo(initialSize);
+		base = Bits.allocateMemory(lim);
+	}
 
 	private long advance(int req) {
 		if (lim - pos < req) {
@@ -59,6 +70,16 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return lim - pos;
 	}
 
+	private byte[] chunk() {
+		byte[] c = chunk;
+
+		if (c == null) {
+			c = chunk = new byte[16 * 1024];
+		}
+
+		return c;
+	}
+
 	public Source clear() {
 		pos = mark = 0;
 		return this;
@@ -70,13 +91,19 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	public long decodeMask(int max) {
-		return max < 48 ? readLongP() : readLong();
+		return max < 48 ? readVarLong() : readLong();
 	}
 
-	public Source filledWith(byte[] src) {
+	public Source filledWith(byte[] hb) {
+		return filledWith(hb, 0, hb.length);
+	}
+
+	public Source filledWith(byte[] hb, int off, int len) {
+		fillGuard(len);
+
+		Bits.copyFrom(base, hb, off, len);
+
 		reset();
-		fillGuard(src.length);
-		Bits.copyFrom(base, src, 0, src.length);
 
 		return this;
 	}
@@ -107,17 +134,17 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	public Source filledWith(InputStream is) throws IOException {
-		byte[] b = new byte[4096];
+		byte[] b = chunk();
 
 		int r = 0;
 
-		long p = 0;
+		reset();
 		while ((r = is.read(b)) > 0) {
 			fillGuard(r);
 
-			Bits.copyFrom(base + p, b, 0, r);
-			p += r;
+			Bits.copyFrom(advance(r), b, 0, r);
 		}
+		reset();
 
 		return this;
 	}
@@ -137,7 +164,16 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	private void inflate(boolean[] o) {
-		Bits.readBitMask(this, o);
+		int loops = readVarInt();
+
+		int ix = 0;
+
+		for (int i = 0; i < loops; i++) {
+			long l = readLong();
+			for (int j = 0; j < 64 && ix < o.length; j++, ix++) {
+				o[ix] = (l & 1L << j) != 0;
+			}
+		}
 	}
 
 	private void inflate(byte[] o) {
@@ -218,7 +254,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	@Override
 	public int read() {
-		return pos < lim ? U.getByte(base + pos++) : -1;
+		return pos < lim ? U.getByte(base + pos++) & 0xff : -1;
 	}
 
 	@Override
@@ -233,12 +269,12 @@ public final class Source extends InputStream implements Closeable, DataInput {
 			return -1;
 		}
 
-		if (len > avail) {
-			len = (int) avail;
-		}
-
 		if (len <= 0) {
 			return 0;
+		}
+
+		if (len > avail) {
+			len = (int) avail;
 		}
 
 		Bits.copyTo(base, dst, off, len);
@@ -260,6 +296,17 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	@Override
 	public char readChar() {
 		return U.getChar(advance(2));
+	}
+
+	public String readChars() {
+		int len = readVarInt();
+		char[] dst = new char[len];
+		Bits.copyTo(advance(len << 1), dst, 0, len);
+
+		String rv = Utils.allocateInstance(String.class);
+		U.putObject(rv, Utils.V_OFF, dst);
+
+		return rv;
 	}
 
 	@Override
@@ -288,17 +335,189 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	public int[] readIntArray() {
-		int len = readIntP();
+		int len = readVarInt();
 		int[] rv = new int[len];
 		inflate(rv);
 
 		return rv;
 	}
 
-	public int readIntP() {
-		guard(1);
+	@Override
+	public String readLine() throws IOException {
+		return null;
+	}
+
+	@Override
+	public final long readLong() {
+		guard(8);
+		long v = U.getLong(base + pos);
+		pos += 8;
+		return v;
+	}
+
+	public long[] readLongArray() {
+		int len = readVarInt();
+		long[] rv = new long[len];
+		inflate(rv);
+
+		return rv;
+	}
+
+	private long readRawVarint64SlowPath() {
+		long result = 0;
+		for (int shift = 0; shift < 64; shift += 7) {
+			final byte b = readByte();
+			result |= (long) (b & 0x7F) << shift;
+			if ((b & 0x80) == 0) {
+				return result;
+			}
+		}
+		throw W;
+	}
+
+	@Override
+	public short readShort() {
+		return U.getShort(advance(2));
+	}
+
+	@Override
+	public int readUnsignedByte() throws IOException {
+		return 0;
+	}
+
+	@Override
+	public int readUnsignedShort() throws IOException {
+		return 0;
+	}
+
+	@Override
+	public String readUTF() {
+		final int charCount = readVarInt();
+		final char[] chars = new char[charCount];
+		int c, ix = 0;
+		while (ix < charCount) {
+			c = readByte() & 0xff;
+
+			switch (c >> 4) {
+			case 0:
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+				chars[ix++] = (char) c;
+				break;
+			case 12:
+			case 13:
+				chars[ix++] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
+				break;
+			case 14:
+				chars[ix++] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
+				break;
+			default:// checkstyle
+				break;
+			}
+
+		}
+
+		String rv = Utils.allocateInstance(String.class);
+		U.putObject(rv, Utils.V_OFF, chars);
+
+		return rv;
+	}
+
+	// protobuf impl
+	public final long readVaLongP() {
+		fastpath: {
+		if (pos == lim) {
+			break fastpath;
+		}
+
 		Unsafe u = U;
 		long p = base + pos;
+
+		long x;
+		int y;
+		if ((y = u.getByte(p++)) >= 0) {
+			pos++;
+			return y;
+		} else if (lim - pos < 10) {
+			break fastpath;
+		} else if ((x = y ^ u.getByte(p++) << 7) < 0L) {
+			x ^= ~0L << 7;
+		} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14;
+		} else if ((x ^= u.getByte(p++) << 21) < 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
+		} else if ((x ^= (long) u.getByte(p++) << 28) >= 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
+		} else if ((x ^= (long) u.getByte(p++) << 35) < 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35;
+		} else if ((x ^= (long) u.getByte(p++) << 42) >= 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42;
+		} else if ((x ^= (long) u.getByte(p++) << 49) < 0L) {
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49;
+		} else {
+			x ^= (long) u.getByte(p++) << 56;
+			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49 ^ ~0L << 56;
+			if (x < 0L) {
+				if (u.getByte(p++) < 0L) {
+					break fastpath; // Will throw malformedVarint()
+				}
+			}
+		}
+		pos = (int) (p - base);
+		return x;
+	}
+
+	return readRawVarint64SlowPath();
+	}
+
+	public char readVarChar() {
+		int c = readByte() & 0xff;
+		char rv;
+
+		switch (c >> 4) {
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			rv = (char) c;
+			break;
+		case 12:
+		case 13:
+			rv = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
+			break;
+		case 14:
+			rv = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
+			break;
+		default:// wrong encoding??:
+			rv = '\0';
+		}
+
+		return rv;
+	}
+
+	public double readVarDouble() {
+		return readDouble();
+	}
+
+	public float readVarFloat() {
+		return readFloat();
+	}
+
+	public int readVarInt() {
+		guard(1);
+
+		Unsafe u = U;
+		long p = base + pos;
+
 		int b;
 		int v = (b = u.getByte(p++)) & 0x7F;
 		if ((b & 0x80) != 0) {
@@ -323,24 +542,46 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return v;
 	}
 
-	@Override
-	public String readLine() throws IOException {
-		return null;
+	// protobuf impl
+	public int readVarIntP() {
+
+		Unsafe u = U;
+
+		long p = base + pos;
+
+		fastpath: {
+			if (pos == lim) {
+				break fastpath;
+			}
+
+			int x;
+			if ((x = U.getByte(p++)) >= 0) {
+				pos++;
+				return x;
+			} else if (lim - pos < 10) {
+				break fastpath;
+			} else if ((x ^= u.getByte(p++) << 7) < 0L) {
+				x ^= ~0L << 7;
+			} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14;
+			} else if ((x ^= u.getByte(p++) << 21) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
+			} else {
+				int y = u.getByte(p++);
+				x ^= y << 28;
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
+				if (y < 0 && u.getByte(p++) < 0 && u.getByte(p++) < 0 && u.getByte(p++) < 0 && u.getByte(p++) < 0 && u.getByte(p++) < 0) {
+					break fastpath; // Will throw malformedVarint()
+				}
+			}
+			pos = (int) (p - base);
+			return x;
+		}
+
+		return (int) readRawVarint64SlowPath();
 	}
 
-	@Override
-	public final long readLong() {
-		guard(8);
-		long v = U.getLong(base + pos);
-		pos += 8;
-		return v;
-	}
-
-	public long[] readLongArray() {
-		return null;
-	}
-
-	public final long readLongP() {
+	public final long readVarLong() {
 		guard(1);
 
 		Unsafe u = U;
@@ -389,66 +630,21 @@ public final class Source extends InputStream implements Closeable, DataInput {
 			}
 		}
 
-		pos += b - base - pos;
+		pos = (int) (b - base);
 
 		return rv;
 	}
 
-	@Override
-	public short readShort() {
-		return U.getShort(advance(2));
-	}
-
-	@Override
-	public int readUnsignedByte() throws IOException {
-		return 0;
-	}
-
-	@Override
-	public int readUnsignedShort() throws IOException {
-		return 0;
-	}
-
-	@Override
-	public String readUTF() {
-		final int charCount = readIntP();
-		final char[] chars = new char[charCount];
-		int c, ix = 0;
-		while (ix < charCount) {
-			c = readByte() & 0xff;
-
-			switch (c >> 4) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				chars[ix++] = (char) c;
-				break;
-			case 12:
-			case 13:
-				chars[ix++] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
-				break;
-			case 14:
-				chars[ix++] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
-				break;
-			default:// checkstyle
-				break;
-			}
-
+	public short readVarShort() {
+		final byte value = readByte();
+		if (value == -1) {
+			return readShort();
+		}
+		if (value < 0) {
+			return (short) (value + 256);
 		}
 
-		String rv = Utils.allocateInstance(String.class);
-		U.putObject(rv, Utils.V_OFF, chars);
-
-		return rv;
-	}
-
-	public void refill(byte[] hb) {
-
+		return value;
 	}
 
 	@Override
@@ -479,5 +675,4 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	public int skipBytes(int n) throws IOException {
 		return 0;
 	}
-
 }

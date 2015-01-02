@@ -32,7 +32,7 @@ public final class SSMulti {
 	public void inflateData0(Context c, Source src, Object o) {
 		Set<Object> s = (Set<Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		for (int i = 0; i < sz; i++) {
 			s.add(IC_R(c, src));
@@ -44,7 +44,7 @@ public final class SSMulti {
 
 		CollectionSerializer.readExtensions(c, src, s, ctor, SHAPE);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz != 0) {
 
@@ -65,7 +65,7 @@ public final class SSMulti {
 		Object rv;
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
 
@@ -77,7 +77,7 @@ public final class SSMulti {
 	public Object instantiateKSZ(Source src) {
 		src.mark();
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		src.reset();
 
@@ -93,7 +93,7 @@ public final class SSMulti {
 
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		if (sorted) {
 			rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
@@ -113,7 +113,7 @@ public final class SSMulti {
 
 		int sz = s.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			Iterator<Object> itr = s.iterator();
@@ -132,7 +132,7 @@ public final class SSMulti {
 
 		int sz = s.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			int n = -1;

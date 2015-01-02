@@ -30,19 +30,21 @@ public interface _Source {
 	String getD_D = "()D";
 	String getZ_D = "()Z";
 
-	String unpackZ = getZ + "P";
+	String unpackZ = "readBoolean";
 	String unpackZ_D = getZ_D;
-	String unpackC = getC + "P";
+	String unpackB = "readByte";
+	String unpackB_D = getB_D;
+	String unpackC = "readVarChar";
 	String unpackC_D = getC_D;
-	String unpackS = getS + "P";
+	String unpackS = "readVarShort";
 	String unpackS_D = getS_D;
-	String unpackI = getI + "P";
+	String unpackI = "readVarInt";
 	String unpackI_D = getI_D;
-	String unpackF = getF + "P";
+	String unpackF = "readVarFloat";
 	String unpackF_D = getF_D;
-	String unpackL = getL + "P";
+	String unpackL = "readVarLong";
 	String unpackL_D = getL_D;
-	String unpackD = getD + "P";
+	String unpackD = "readVarDouble";
 	String unpackD_D = getD_D;
 	String mark = "mark";
 

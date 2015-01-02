@@ -26,21 +26,21 @@ public interface _Sink {
 	String putD_D = "(D)" + "V";
 	String putZ_D = "(Z)" + "V";
 
-	String packZ = putZ + "P";
+	String packZ = "writeBoolean";
 	String packZ_D = putZ_D;
-	String packB = putB;
+	String packB = "writeByte";
 	String packB_D = putB_D;
-	String packC = putC + "P";
+	String packC = "writeVarChar";
 	String packC_D = putC_D;
-	String packS = putS + "P";
+	String packS = "writeVarShort";
 	String packS_D = putS_D;
-	String packI = putI + "P";
+	String packI = "writeVarInt";
 	String packI_D = putI_D;
-	String packF = putF + "P";
+	String packF = "writeVarFloat";
 	String packF_D = putF_D;
-	String packL = putL + "P";
+	String packL = "writeVarLong";
 	String packL_D = putL_D;
-	String packD = putD + "P";
+	String packD = "writeVarDouble";
 	String packD_D = putD_D;
 
 	String bitMapGuard = "guard";

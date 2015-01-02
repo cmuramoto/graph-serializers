@@ -97,7 +97,7 @@ public final class LeafTypeArraySerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Array.newInstance(type, src.readIntP());
+		return Array.newInstance(type, src.readVarInt());
 	}
 
 	@Override
@@ -107,7 +107,7 @@ public final class LeafTypeArraySerializer extends GraphSerializer {
 		boolean op = this.op;
 		GraphSerializer gs = ser;
 
-		dst.writeIntP(array.length);
+		dst.writeVarInt(array.length);
 
 		if (nullable) {
 			writeBitMask(c, dst, array, gs, op);

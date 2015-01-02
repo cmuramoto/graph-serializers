@@ -50,7 +50,7 @@ public class ASMulti {
 	public void writeData0(Context c, Sink dst, Object o) {
 		Object[] array = (Object[]) o;
 
-		dst.writeIntP(array.length);
+		dst.writeVarInt(array.length);
 
 		for (Object v : array) {
 			IC_W(c, dst, v);
@@ -61,7 +61,7 @@ public class ASMulti {
 		Object[] o = (Object[]) val;
 		int len = o.length;
 
-		dst.writeIntP(len);
+		dst.writeVarInt(len);
 
 		int loops = len >>> 6;
 				int l = (len & 63) == 0 ? loops : loops + 1;

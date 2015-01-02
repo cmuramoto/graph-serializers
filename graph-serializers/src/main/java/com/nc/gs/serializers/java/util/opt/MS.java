@@ -31,7 +31,7 @@ public class MS {
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		for (int i = 0; i < sz; i++) {
 			m.put(ks.read(c, src), vs.readData(c, src));
@@ -47,7 +47,7 @@ public class MS {
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int loops = sz >>> 6;
 		int l = (sz & 63) == 0 ? loops : loops + 1;
@@ -71,7 +71,7 @@ public class MS {
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int nkAt = src.readInt();
 
@@ -89,7 +89,7 @@ public class MS {
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> m = (Map<Object, Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		int nkAt = src.readInt();
 
@@ -111,7 +111,7 @@ public class MS {
 		Object rv;
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
 
@@ -123,7 +123,7 @@ public class MS {
 	public Object instantiateSZ(Source src) {
 		src.mark();
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		src.reset();
 
@@ -139,7 +139,7 @@ public class MS {
 
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		if (sorted) {
 			rv = v == NULL ? ctor.allocate() : ctor.allocateHollow();
@@ -163,7 +163,7 @@ public class MS {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		Iterator<Entry<Object, Object>> itr = m.entrySet().iterator();
 
@@ -189,7 +189,7 @@ public class MS {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		Iterator<Entry<Object, Object>> itr = m.entrySet().iterator();
 
@@ -230,7 +230,7 @@ public class MS {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		int n = -1;
 
@@ -266,7 +266,7 @@ public class MS {
 
 		int sz = m.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		int n = -1;
 

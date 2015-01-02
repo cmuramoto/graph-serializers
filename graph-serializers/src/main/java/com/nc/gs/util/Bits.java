@@ -1,7 +1,6 @@
 package com.nc.gs.util;
 
 import static com.nc.gs.util.Utils.U;
-import static com.nc.gs.util.Utils.unpackL;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 import static sun.misc.Unsafe.ARRAY_BYTE_INDEX_SCALE;
 import static sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
@@ -18,10 +17,7 @@ import static sun.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
 import static sun.misc.Unsafe.ARRAY_SHORT_INDEX_SCALE;
 import gnu.trove.map.hash.TLongLongHashMap;
 
-import java.nio.ByteBuffer;
-
 import com.nc.gs.io.Sink;
-import com.nc.gs.io.Source;
 
 @SuppressWarnings("restriction")
 public final class Bits {
@@ -150,23 +146,6 @@ public final class Bits {
 		}
 	}
 
-	public static long decodeMask(ByteBuffer src, int max) {
-		return max < 48 ? unpackL(src) : src.getLong();
-	}
-
-	public static void encodeMask(ByteBuffer dst, int lim, int p, long mask) {
-		int cp = dst.position();
-		dst.position(p);
-
-		if (lim < 48) {
-			Utils.packL(dst, mask | 1L << lim + 1);
-		} else {
-			dst.putLong(mask);
-		}
-
-		dst.position(cp);
-	}
-
 	public static synchronized void freeMemory(long address) {
 		long mem = ADDR_TO_UNALIGNED == null ? address : ADDR_TO_UNALIGNED.remove(address);
 
@@ -175,55 +154,8 @@ public final class Bits {
 		U.freeMemory(mem);
 	}
 
-	public static int fullReserveMask(ByteBuffer dst, int loops, int r) {
-		int rv = dst.position();
-
-		int extra = r <= 48 ? 1 + r / 7 : 8;
-
-		dst.position(rv + (loops << 6) + extra);
-
-		return rv;
-	}
-
-	public static void readBitMask(Source src, boolean[] o) {
-		int loops = src.readIntP();
-
-		int ix = 0;
-
-		for (int i = 0; i < loops; i++) {
-			long l = src.readLong();
-			for (int j = 0; j < 64 && ix < o.length; j++, ix++) {
-				o[ix] = (l & 1L << j) != 0;
-			}
-		}
-	}
-
 	public static long reallocateMemory(long base, long newLim, int sz) {
 		return U.reallocateMemory(base, newLim);
-	}
-
-	public static int reserveMask(ByteBuffer dst, int max) {
-		int p = dst.position();
-
-		if (max < 48) {
-			dst.position(p + 1 + (max + 1) / 7);
-		} else {
-			dst.position(p + 8);
-		}
-
-		return p;
-	}
-
-	public static void reserveNullSlot(ByteBuffer dst, int sz) {
-		int p = dst.mark().position();
-
-		int req = Utils.nextPowerOfTwoInc(sz) << 1;
-
-		if (req > 0 && (req >>>= 6) <= 20) {
-			dst.position(p + 1 + req / 7);
-		} else {
-			dst.position(p + 4);
-		}
 	}
 
 	public static void writeBitMask(Sink dst, boolean[] o) {
@@ -231,7 +163,7 @@ public final class Bits {
 		int loops = len >>> 6;
 		int r = len & 63;
 
-		dst.writeIntP(loops + (r > 0 ? 1 : 0));
+		dst.writeVarInt(loops + (r > 0 ? 1 : 0));
 
 		int ix = 0;
 		long fl;

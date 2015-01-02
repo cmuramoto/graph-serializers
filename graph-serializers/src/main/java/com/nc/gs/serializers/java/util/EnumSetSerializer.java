@@ -54,7 +54,7 @@ public final class EnumSetSerializer extends GraphSerializer {
 			U.putObject(rv, JE_OFF, l);
 		} else {
 			rv = Utils.allocateInstance(REG);
-			U.putLong(rv, RE_OFF, src.readLongP());
+			U.putLong(rv, RE_OFF, src.readVarLong());
 		}
 
 		U.putObject(rv, ET_OFF, type);
@@ -73,11 +73,11 @@ public final class EnumSetSerializer extends GraphSerializer {
 
 		if (es.getClass() == REG) {
 			dst.writeByte(FALSE);
-			dst.writeLongP(U.getLong(es, RE_OFF));
+			dst.writeVarLong(U.getLong(es, RE_OFF));
 		} else {
 			dst.writeByte(TRUE);
 			long[] l = (long[]) U.getObject(es, JE_OFF);
-			dst.writeIntP(l.length);
+			dst.writeVarInt(l.length);
 			dst.write(l, 0, l.length);
 		}
 	}

@@ -18,7 +18,7 @@ public final class RACS {
 	public void inflateData0(Context c, Source src, Object o) {
 		GraphSerializer gs = RACS.gs;
 		Collection<Object> col = (Collection<Object>) o;
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		for (int i = 0; i < sz; i++) {
 			col.add(gs.read(c, src));
@@ -29,7 +29,7 @@ public final class RACS {
 		GraphSerializer gs = RACS.gs;
 		Collection<Object> col = (Collection<Object>) o;
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 		int loops = sz >>> 6;
 		int l = (sz & 63) == 0 ? loops : loops + 1;
 
@@ -49,7 +49,7 @@ public final class RACS {
 
 	public Object instantiateKSZ(Source src) {
 		src.mark();
-		Object rv = ctor.allocate(src.readIntP());
+		Object rv = ctor.allocate(src.readVarInt());
 		src.reset();
 
 		return rv;
@@ -60,7 +60,7 @@ public final class RACS {
 		List<Object> col = (List<Object>) o;
 		int sz = col.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			for (int i = 0; i < sz; i++) {
@@ -74,7 +74,7 @@ public final class RACS {
 		List<Object> list = (List<Object>) o;
 		int sz = list.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz != 0) {
 			int loops = sz >>> 6;

@@ -12,13 +12,11 @@ public final class StringSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return src.readUTF();
+		return src.readChars();
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		// The guard here is a hack to prevent VM crash in U.get(null,...).
-		// This may happen if a field is marked with @NotNull and the contract is not honored!
-		dst.writeUTF((String) o);
+		dst.writeChars((String) o);
 	}
 }

@@ -1,7 +1,6 @@
 package com.nc.gs.util;
 
 import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -243,68 +242,68 @@ public class Utils {
 	}
 
 	public static void guard(Sink dst, Object o) {
-		dst.writeIntP(o == null ? 0 : 0x1);
+		dst.writeVarInt(o == null ? 0 : 0x1);
 	}
 
 	public static void guard(Sink dst, Object a, Object b) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k, Object l) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k, Object l, Object m) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k, Object l, Object m, Object n) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000));
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k, Object l, Object m, Object n, Object o) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000)
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000)
 				| (o == null ? 0 : 0x4000));
 	}
 
 	public static void guard(Sink dst, Object a, Object b, Object c, Object d, Object e, Object f, Object g, Object h, Object i, Object j, Object k, Object l, Object m, Object n, Object o, Object p) {
-		dst.writeIntP((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000)
+		dst.writeVarInt((a == null ? 0 : 0x1) | (b == null ? 0 : 0x2) | (c == null ? 0 : 0x4) | (d == null ? 0 : 0x8) | (e == null ? 0 : 0x10) | (f == null ? 0 : 0x20) | (g == null ? 0 : 0x40) | (h == null ? 0 : 0x80) | (i == null ? 0 : 0x100) | (j == null ? 0 : 0x200) | (k == null ? 0 : 0x400) | (l == null ? 0 : 0x800) | (m == null ? 0 : 0x1000) | (n == null ? 0 : 0x2000)
 				| (o == null ? 0 : 0x4000) | (p == null ? 0 : 0x8000));
 	}
 
@@ -340,165 +339,6 @@ public class Utils {
 		}
 
 		return (Class<? extends T>) type;
-	}
-
-	public static void packC(ByteBuffer dst, char value) {
-		dst.putChar(value);
-	}
-
-	public static final void packD(ByteBuffer dst, double value) {
-		dst.putDouble(value);
-	}
-
-	public static void packF(ByteBuffer dst, float value) {
-		packI(dst, Float.floatToIntBits(value));
-	}
-
-	public static void packI(ByteBuffer dst, int v) {
-		if (v >>> 7 == 0) {
-			dst.put((byte) v);
-			return;
-		}
-		if (v >>> 14 == 0) {
-			dst.put((byte) (v & 0x7F | 0x80));
-			dst.put((byte) (v >>> 7));
-			return;
-		}
-		if (v >>> 21 == 0) {
-			dst.put((byte) (v & 0x7F | 0x80));
-			dst.put((byte) (v >>> 7 | 0x80));
-			dst.put((byte) (v >>> 14));
-			return;
-		}
-		if (v >>> 28 == 0) {
-			dst.put((byte) (v & 0x7F | 0x80));
-			dst.put((byte) (v >>> 7 | 0x80));
-			dst.put((byte) (v >>> 14 | 0x80));
-			dst.put((byte) (v >>> 21));
-			return;
-		}
-
-		dst.put((byte) (v & 0x7F | 0x80));
-		dst.put((byte) (v >>> 7 | 0x80));
-		dst.put((byte) (v >>> 14 | 0x80));
-		dst.put((byte) (v >>> 21 | 0x80));
-		dst.put((byte) (v >>> 28));
-	}
-
-	public static void packI(final DataOutput out, final int v) throws IOException {
-		if (v >>> 7 == 0) {
-			out.write((byte) v);
-			return;
-		}
-		if (v >>> 14 == 0) {
-			out.write((byte) (v & 0x7F | 0x80));
-			out.write((byte) (v >>> 7));
-			return;
-		}
-		if (v >>> 21 == 0) {
-			out.write((byte) (v & 0x7F | 0x80));
-			out.write((byte) (v >>> 7 | 0x80));
-			out.write((byte) (v >>> 14));
-			return;
-		}
-		if (v >>> 28 == 0) {
-			out.write((byte) (v & 0x7F | 0x80));
-			out.write((byte) (v >>> 7 | 0x80));
-			out.write((byte) (v >>> 14 | 0x80));
-			out.write((byte) (v >>> 21));
-			return;
-		}
-
-		out.write((byte) (v & 0x7F | 0x80));
-		out.write((byte) (v >>> 7 | 0x80));
-		out.write((byte) (v >>> 14 | 0x80));
-		out.write((byte) (v >>> 21 | 0x80));
-		out.write((byte) (v >>> 28));
-	}
-
-	public static final void packL(ByteBuffer buffer, long value) {
-		if (value >>> 7 == 0) {
-			buffer.put((byte) value);
-			return;
-		}
-		if (value >>> 14 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7));
-			return;
-		}
-		if (value >>> 21 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14));
-			return;
-		}
-		if (value >>> 28 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14 | 0x80));
-			buffer.put((byte) (value >>> 21));
-			return;
-		}
-		if (value >>> 35 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14 | 0x80));
-			buffer.put((byte) (value >>> 21 | 0x80));
-			buffer.put((byte) (value >>> 28));
-			return;
-		}
-		if (value >>> 42 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14 | 0x80));
-			buffer.put((byte) (value >>> 21 | 0x80));
-			buffer.put((byte) (value >>> 28 | 0x80));
-			buffer.put((byte) (value >>> 35));
-			return;
-		}
-		if (value >>> 49 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14 | 0x80));
-			buffer.put((byte) (value >>> 21 | 0x80));
-			buffer.put((byte) (value >>> 28 | 0x80));
-			buffer.put((byte) (value >>> 35 | 0x80));
-			buffer.put((byte) (value >>> 42));
-			return;
-		}
-		if (value >>> 56 == 0) {
-			buffer.put((byte) (value & 0x7F | 0x80));
-			buffer.put((byte) (value >>> 7 | 0x80));
-			buffer.put((byte) (value >>> 14 | 0x80));
-			buffer.put((byte) (value >>> 21 | 0x80));
-			buffer.put((byte) (value >>> 28 | 0x80));
-			buffer.put((byte) (value >>> 35 | 0x80));
-			buffer.put((byte) (value >>> 42 | 0x80));
-			buffer.put((byte) (value >>> 49));
-			return;
-		}
-		buffer.put((byte) (value & 0x7F | 0x80));
-		buffer.put((byte) (value >>> 7 | 0x80));
-		buffer.put((byte) (value >>> 14 | 0x80));
-		buffer.put((byte) (value >>> 21 | 0x80));
-		buffer.put((byte) (value >>> 28 | 0x80));
-		buffer.put((byte) (value >>> 35 | 0x80));
-		buffer.put((byte) (value >>> 42 | 0x80));
-		buffer.put((byte) (value >>> 49 | 0x80));
-		buffer.put((byte) (value >>> 56));
-	}
-
-	public static void packS(ByteBuffer dst, short val) {
-		if (val >= 0 && val <= 254) {
-			dst.put((byte) val);
-			return;
-		}
-		dst.put((byte) -1);
-		dst.putShort(val);
-	}
-
-	public static void packZ(ByteBuffer dst, boolean value) {
-		dst.put((byte) (value ? 1 : 0));
 	}
 
 	public static <T> List<List<T>> partition(List<T> c, int size) {
@@ -861,33 +701,6 @@ public class Utils {
 		cr.accept(new TraceClassVisitor(null, new ASMifier(), new PrintWriter(file)), 0);
 	}
 
-	// public static void writeChars(final ByteBuffer dest, final char[] value) {
-	// final int len = value.length;
-	// packI(dest, len);
-	// dest.asCharBuffer().put(value);
-	// dest.position(dest.position() + (len << 1));
-	// }
-
-	public static void writeChars(final ByteBuffer dest, final char[] value) {
-		final int len = value.length;
-		packI(dest, len);
-		int c;
-
-		for (int i = 0; i < len; i++) {
-			c = value[i];
-			if (c <= 0x007F) {
-				dest.put((byte) c);
-			} else if (c > 0x07FF) {
-				dest.put((byte) (0xE0 | c >> 12 & 0x0F));
-				dest.put((byte) (0x80 | c >> 6 & 0x3F));
-				dest.put((byte) (0x80 | c >> 0 & 0x3F));
-			} else {
-				dest.put((byte) (0xC0 | c >> 6 & 0x1F));
-				dest.put((byte) (0x80 | c >> 0 & 0x3F));
-			}
-		}
-	}
-
 	public static void writeClass(File base, String name, byte[] bc) {
 		try {
 			String fn = name.endsWith(".class") ? name : name + ".class";
@@ -899,10 +712,6 @@ public class Utils {
 
 	public static void writeClass(String name, byte[] bc) {
 		writeClass(IO_BASE, name, bc);
-	}
-
-	public static void writeString(final ByteBuffer dest, final String value) {
-		writeChars(dest, (char[]) U.getObject(value, V_OFF));
 	}
 
 	public static final sun.misc.Unsafe U;

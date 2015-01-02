@@ -30,11 +30,13 @@ public final class Context implements AutoCloseable {
 	static final class Chunk {
 
 		byte[] hb;
-		Source src;
-		Sink dst;
+		final Sink dst;
+		final Source src;
 
 		public Chunk() {
 			grow(4096);
+			dst = new Sink(4096);
+			src = new Source();
 		}
 
 		public void grow(int moreBytes) {
@@ -43,6 +45,18 @@ public final class Context implements AutoCloseable {
 			} else {
 				hb = Arrays.copyOf(hb, hb.length + moreBytes);
 			}
+		}
+
+		public <T> void inflate(Context c, DataInput input, T instance) throws IOException {
+			int len = input.readInt();
+			if (len > hb.length) {
+				grow(len);
+			}
+			input.readFully(hb, 0, len);
+
+			GraphSerializer gs = c.forType(instance.getClass());
+			c.mark(instance, ID_BASE);
+			gs.inflateData(c, src.filledWith(hb, 0, len), instance);
 		}
 
 		@SuppressWarnings("unchecked")
@@ -62,30 +76,31 @@ public final class Context implements AutoCloseable {
 			}
 			input.readFully(hb, 0, len);
 
-			src.refill(hb);
-
 			GraphSerializer gs = c.forType(type);
-			return (T) gs.read(c, src);
+			return (T) gs.read(c, src.filledWith(hb, 0, len));
 		}
 
-		public <T> void write(Context c, DataOutput output, T obj) throws IOException {
+		public <T> void write(Context c, DataOutput output, T obj, boolean wt) throws IOException {
 			dst.clear();
 
 			GraphSerializer gs = c.forType(obj.getClass());
 
-			gs.write(c, dst, obj);
+			if (wt) {
+				int id = ct.id(obj.getClass());
+				output.writeInt(id);
 
-			int id = ct.id(obj.getClass());
-			output.writeInt(id);
-
-			if (id <= 0) {
-				output.writeUTF(obj.getClass().getName());
+				if (id <= 0) {
+					output.writeUTF(obj.getClass().getName());
+				}
 			}
+
+			gs.writeRoot(c, dst, obj);
 
 			int sz = dst.position();
 			output.writeInt(sz);
-			dst.flushTo(output);
+			dst.flushTo(output, hb);
 		}
+
 	}
 
 	private static Context borrow() {
@@ -123,12 +138,12 @@ public final class Context implements AutoCloseable {
 	}
 
 	public static Class<?> rawReadType(Source src) {
-		int tId = src.readIntP();
+		int tId = src.readVarInt();
 
 		Class<?> rv;
 
 		if (tId == 0) {
-			int amount = src.readIntP();
+			int amount = src.readVarInt();
 
 			if (amount == 1) {
 				rv = lookupOrCreate(src.readUTF());
@@ -171,13 +186,13 @@ public final class Context implements AutoCloseable {
 				dst.writeUTF(type.getName());
 			} else {
 				Class<?>[] types = (Class<?>[]) overlaid;
-				dst.writeIntP(types.length + 1);
+				dst.writeVarInt(types.length + 1);
 				for (Class<?> t : types) {
 					rawWriteType(dst, t);
 				}
 			}
 		} else {
-			dst.writeIntP(tId);
+			dst.writeVarInt(tId);
 		}
 	}
 
@@ -312,10 +327,10 @@ public final class Context implements AutoCloseable {
 			dst.write(TYPE_ID);
 			Class<? extends Object> type = o.getClass();
 			writeType(dst, type);
-			dst.writeIntP(next + ID_BASE);
+			dst.writeVarInt(next + ID_BASE);
 			return forType(type);
 		} else {
-			dst.writeIntP(id + ID_BASE);
+			dst.writeVarInt(id + ID_BASE);
 			return null;
 		}
 	}
@@ -364,6 +379,10 @@ public final class Context implements AutoCloseable {
 
 	public final int id(Object o) {
 		return m.get(o);
+	}
+
+	<T> void inflate(DataInput in, T instance) throws IOException {
+		getChunk().inflate(this, in, instance);
 	}
 
 	public Instantiator instantiatorOf(Class<?> type) {
@@ -416,10 +435,10 @@ public final class Context implements AutoCloseable {
 		int id = m.putIfAbsent(o, next);
 
 		if (id == -1) {
-			dst.writeIntP(next + ID_BASE);
+			dst.writeVarInt(next + ID_BASE);
 			return false;
 		} else {
-			dst.writeIntP(id + ID_BASE);
+			dst.writeVarInt(id + ID_BASE);
 			return true;
 		}
 	}
@@ -429,12 +448,12 @@ public final class Context implements AutoCloseable {
 	}
 
 	public Object readRefAndData(Source src) {
-		int id = src.readIntP();
+		int id = src.readVarInt();
 
 		Object rv = from(id);
 
 		if (rv == null) {
-			int tId = src.readIntP() - TYPE_ID;
+			int tId = src.readVarInt() - TYPE_ID;
 
 			GraphSerializer gs;
 
@@ -457,7 +476,7 @@ public final class Context implements AutoCloseable {
 	}
 
 	public Class<?> readType(Source src) {
-		int tId = src.readIntP() - TYPE_ID;
+		int tId = src.readVarInt() - TYPE_ID;
 
 		if (tId == 0) {
 			return resolveType(src);
@@ -467,7 +486,7 @@ public final class Context implements AutoCloseable {
 	}
 
 	public Object readTypeAndData(Source src) {
-		int tId = src.readIntP() - TYPE_ID;
+		int tId = src.readVarInt() - TYPE_ID;
 
 		GraphSerializer gs = tId == 0 ? SerializerFactory.serializer(resolveType(src)) : forTypeId(tId);
 
@@ -475,7 +494,7 @@ public final class Context implements AutoCloseable {
 	}
 
 	public Class<?> readTypeOrNull(Source src) {
-		int tId = src.readIntP() - TYPE_ID;
+		int tId = src.readVarInt() - TYPE_ID;
 
 		if (tId == -1) {
 			return null;
@@ -488,10 +507,10 @@ public final class Context implements AutoCloseable {
 	}
 
 	private Class<?> resolveType(Source src) {
-		int id = src.readIntP();
+		int id = src.readVarInt();
 		Class<?> rv = (Class<?>) from(id);
 		if (rv == null) {
-			int amount = src.readIntP();
+			int amount = src.readVarInt();
 			rv = resolveType(src, amount);
 			mark(rv, id);
 		}
@@ -518,16 +537,16 @@ public final class Context implements AutoCloseable {
 
 		if (id == -1) {
 			dst.write(REF);
-			dst.writeIntP(next + ID_BASE);
+			dst.writeVarInt(next + ID_BASE);
 			return false;
 		} else {
-			dst.writeIntP(id + ID_BASE);
+			dst.writeVarInt(id + ID_BASE);
 			return true;
 		}
 	}
 
-	<T> void write(DataOutput out, T obj) throws IOException {
-		getChunk().write(this, out, obj);
+	<T> void write(DataOutput out, T obj, boolean wt) throws IOException {
+		getChunk().write(this, out, obj, wt);
 	}
 
 	private void writeForCompatibility(Sink dst, Class<?> type) {
@@ -540,7 +559,7 @@ public final class Context implements AutoCloseable {
 				dst.writeUTF(type.getName());
 			} else {
 				Class<?>[] types = (Class<?>[]) overlaid;
-				dst.writeIntP(types.length + 1);
+				dst.writeVarInt(types.length + 1);
 
 				for (Class<?> t : types) {
 					writeType(dst, t);
@@ -562,7 +581,7 @@ public final class Context implements AutoCloseable {
 	public void writeType(Sink dst, Class<?> type) {
 		int tId = typeId(type);
 
-		dst.writeIntP(TYPE_ID + tId);
+		dst.writeVarInt(TYPE_ID + tId);
 
 		if (tId == 0) {
 			writeForCompatibility(dst, type);
@@ -579,7 +598,7 @@ public final class Context implements AutoCloseable {
 		Class<?> type = o.getClass();
 		int tId = typeId(type);
 
-		dst.writeIntP(TYPE_ID + tId);
+		dst.writeVarInt(TYPE_ID + tId);
 
 		GraphSerializer gs;
 		if (tId == 0) {

@@ -458,7 +458,7 @@ public final class MapSerializer extends GraphSerializer {
 	public void inflateData(Context c, Source src, Object o) {
 		readExtensions(c, src, o, ctor);
 
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz == 0) {
 			return;
@@ -485,7 +485,7 @@ public final class MapSerializer extends GraphSerializer {
 
 		src.mark();
 
-		int v = src.readIntP();
+		int v = src.readVarInt();
 
 		if (sorted) {
 			rv = v == ObjectShape.NON_SORTED ? ctor.allocate() : ctor.allocateHollow();
@@ -509,7 +509,7 @@ public final class MapSerializer extends GraphSerializer {
 
 		int sz = map.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz == 0) {
 			return;

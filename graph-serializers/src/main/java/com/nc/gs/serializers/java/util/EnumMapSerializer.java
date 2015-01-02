@@ -44,7 +44,7 @@ public final class EnumMapSerializer extends GraphSerializer {
 	@SuppressWarnings({ "restriction", "rawtypes", "unchecked" })
 	@Override
 	public void inflateData(Context c, Source src, Object o) {
-		int sz = src.readIntP();
+		int sz = src.readVarInt();
 
 		if (sz == 0) {
 			return;
@@ -63,11 +63,11 @@ public final class EnumMapSerializer extends GraphSerializer {
 			int max = loops + 1;
 
 			for (int i = 0; i < max; i++) {
-				long fl = i < loops ? src.readLong() : src.readLongP();
+				long fl = i < loops ? src.readLong() : src.readVarLong();
 				int lim = i < loops ? 64 : r;
 
 				for (int j = 0; j < lim; j++) {
-					Enum key = cts[src.readIntP()];
+					Enum key = cts[src.readVarInt()];
 					Object v;
 
 					if ((fl & 1L << j) != 0) {
@@ -85,7 +85,7 @@ public final class EnumMapSerializer extends GraphSerializer {
 			}
 		} else {
 			for (int i = 0; i < sz; i++) {
-				Enum key = cts[src.readIntP()];
+				Enum key = cts[src.readVarInt()];
 				Object v;
 
 				if (vs == null) {
@@ -115,7 +115,7 @@ public final class EnumMapSerializer extends GraphSerializer {
 
 		int sz = map.size();
 
-		dst.writeIntP(sz);
+		dst.writeVarInt(sz);
 
 		if (sz == 0) {
 			return;
@@ -143,7 +143,7 @@ public final class EnumMapSerializer extends GraphSerializer {
 							Entry<Enum<?>, Object> e = itr.next();
 							Object v = e.getValue();
 
-							dst.writeIntP(e.getKey().ordinal());
+							dst.writeVarInt(e.getKey().ordinal());
 
 							if (v != null) {
 								fl |= 1L << j;
@@ -180,12 +180,12 @@ public final class EnumMapSerializer extends GraphSerializer {
 							}
 						}
 
-						dst.writeLongP(fl);
+						dst.writeVarLong(fl);
 
 						for (int i = 0; i < arr.length; i++) {
 							Entry<Enum<?>, Object> e = arr[i];
 
-							dst.writeIntP(e.getKey().ordinal());
+							dst.writeVarInt(e.getKey().ordinal());
 
 							Object v = e.getValue();
 							if (v != null) {
@@ -213,7 +213,7 @@ public final class EnumMapSerializer extends GraphSerializer {
 				Enum<?> k = e.getKey();
 				Object v = e.getValue();
 
-				dst.writeIntP(k.ordinal());
+				dst.writeVarInt(k.ordinal());
 
 				if (vs == null) {
 					if (op) {
