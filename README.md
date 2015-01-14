@@ -38,6 +38,41 @@ public class Node {
 
 #### Simple Usage
 
+There are a few ways one can use the API to read/write objects. The simplest is probably via the **Context** class.
+
+```java
+public class Main {
+  
+  public static void main(String...args){
+  	Node n=...
+  	Sink dst=new Sink();
+  	
+  	try(Context c=Context.writing()){
+  		c.writeRoot(dst,n);
+  	}
+  	
+  	byte[] buff=dst.toByteArray();
+  	
+  	Source src=new Source();
+  	
+  	try(Context c=Context.reading()){
+  		Node rec=c.readRoot(src.filledWith(buff),Node.class);
+  		//...
+  	}
+  	
+  	sink.flushTo(//...some output stream);
+  }
+}
+```
+
+#### Sinks, Sources and (no) Streaming
+
+The Sink and Source extend (Output/Input)Stream as well as implement Data(Output/Input), however as of now they are meant to be used more like direct ByteBuffers. The reason for this is to avoid flushing and filling logic during (des-)serialization. So, during serialization everything will be done (and) held in memory until one decides to commit the data to another I/O target and during the deserialization the whole source stream should be consumed beforehand.
+
+This approach might be troublesome for very large objects, but in the real world one should just not serialize huge objects!
+
+
+
 
 
 #### Benchmarks
