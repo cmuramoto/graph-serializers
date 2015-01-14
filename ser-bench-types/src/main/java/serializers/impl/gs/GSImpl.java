@@ -8,7 +8,6 @@ import serializers.spi.CheckingObjectSerializer;
 import com.nc.gs.core.Context;
 import com.nc.gs.core.Genesis;
 import com.nc.gs.core.GraphSerializer;
-import com.nc.gs.core.Serializer;
 import com.nc.gs.core.SerializerFactory;
 import com.nc.gs.io.Sink;
 import com.nc.gs.io.Source;
@@ -36,6 +35,14 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 	static void restore(Sink bb) {
 		bb.clear();
 		buffers.offer(bb);
+	}
+
+	public static void writeRoot(Sink dst, Object o) {
+		GraphSerializer gs = SerializerFactory.serializer(o.getClass());
+
+		try (Context c = Context.writing()) {
+			gs.writeRoot(c, dst, o);
+		}
 	}
 
 	static {
@@ -128,7 +135,7 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 	public byte[] serialize(MediaContent content) throws Exception {
 		byte[] rv;
 		Sink buffer = borrow();
-		Serializer.writeRoot(buffer, content);
+		writeRoot(buffer, content);
 		rv = buffer.toByteArray();
 		restore(buffer);
 		return rv;

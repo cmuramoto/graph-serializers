@@ -11,9 +11,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import serializers.impl.gs.GSImpl;
-import serializers.impl.jdk.JavaSerializer;
 import serializers.impl.protobuf.ProtobufSerializer;
-import serializers.impl.thrift.ThriftSerializer;
 import serializers.spi.CheckingObjectSerializer;
 import serializers.spi.ObjectSerializer;
 
@@ -27,10 +25,10 @@ public class BenchmarkRunner {
 		BenchmarkRunner runner = new BenchmarkRunner();
 
 		for (int i = 0; i < 5; i++) {
-			runner.addObjectSerializer(new ProtobufSerializer());
 			runner.addObjectSerializer(new GSImpl());
-			runner.addObjectSerializer(new ThriftSerializer());
-			runner.addObjectSerializer(new JavaSerializer());
+			runner.addObjectSerializer(new ProtobufSerializer());
+			// runner.addObjectSerializer(new ThriftSerializer());
+			// runner.addObjectSerializer(new JavaSerializer());
 		}
 
 		System.out.println("Starting");
