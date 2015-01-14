@@ -4,11 +4,11 @@ import static com.nc.gs.util.Utils.U;
 
 import java.io.Closeable;
 import java.io.DataOutput;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 
 import org.objectweb.asm.Type;
 
@@ -20,8 +20,10 @@ import com.nc.gs.util.Utils;
 @SuppressWarnings("restriction")
 public final class Sink extends OutputStream implements DataOutput, Closeable {
 
-	public static Sink mmap(File file) {
-		return null;
+	public static Sink of(MappedByteBuffer bb) {
+		Sink s = new Sink(Utils.address(bb), bb.capacity());
+		s.mmap = true;
+		return s;
 	}
 
 	static Object validate(Object target) {
@@ -39,8 +41,8 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	long base;
 	int pos;
 	int lim;
-
 	int mark;
+	boolean mmap;
 
 	public Sink() {
 		this(4096);
@@ -49,6 +51,15 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	public Sink(int initialSize) {
 		lim = Utils.nextPowerOfTwo(initialSize);
 		base = Bits.allocateMemory(lim);
+	}
+
+	Sink(long addr, int lim) {
+		base = addr;
+		this.lim = lim;
+	}
+
+	public long address() {
+		return base;
 	}
 
 	byte[] chunk() {
@@ -106,33 +117,34 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	}
 
 	public void flushTo(DataOutput target, byte[] chunk) throws IOException {
+		flushTo(Out.of(target), chunk);
+	}
 
+	public void flushTo(Out target, byte[] chunk) throws IOException {
 		if (target != null) {
 			int len = chunk.length;
-			int p = pos;
+			int r = pos;
+			long addr = base;
 
-			if (len >= p) {
-				Bits.copyTo(base, chunk, 0, p);
-				target.write(chunk, 0, p);
-			} else {
-				int r = pos;
-				long addr = base;
+			while (r > 0) {
+				int nb = Math.min(len, r);
 
-				while (r > 0) {
-					int nb = Math.min(len, r);
-
-					Bits.copyTo(addr, chunk, 0, nb);
-					target.write(chunk, 0, nb);
-					r -= nb;
-				}
+				Bits.copyTo(addr, chunk, 0, nb);
+				target.write(chunk, nb);
+				addr += nb;
+				r -= nb;
 			}
 		}
+	}
+
+	public void flushTo(OutputStream target, byte[] chunk) throws IOException {
+		flushTo(Out.of(target), chunk);
 	}
 
 	void guard(int req) {
 		if (pos + req > lim) {
 			int newLim = Utils.nextPowerOfTwo(lim + req);
-			base = Bits.reallocateMemory(base, newLim, pos);
+			base = mmap ? Bits.expandMemory(base, newLim, pos) : Bits.reallocateMemory(base, newLim);
 			lim = newLim;
 		}
 	}
@@ -142,7 +154,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 
 		if (p + req > lim) {
 			int newLim = Utils.nextPowerOfTwo(lim + req);
-			base = Bits.reallocateMemory(base, newLim, pos);
+			base = mmap ? Bits.expandMemory(base, newLim, pos) : Bits.reallocateMemory(base, newLim);
 			lim = newLim;
 		}
 
@@ -156,11 +168,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	}
 
 	public Source mirror() {
-		Source source = new Source();
-		source.base = base;
-		source.lim = lim;
-
-		return source;
+		return new Source(base, lim);
 	}
 
 	public int position() {
@@ -332,10 +340,6 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putInt(ix(4), v);
 	}
 
-	public void writeInt(int p, int v) {
-		U.putInt(base + p, v);
-	}
-
 	// protobuf impl
 	// public void writeVarInt(int v) {
 	// while (true) {
@@ -349,13 +353,12 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 	// }
 
-	public void writeLong(int p, long v) {
-		U.putLong(base + p, v);
+	public void writeInt(int p, int v) {
+		U.putInt(base + p, v);
 	}
 
-	@Override
-	public void writeLong(long v) {
-		U.putLong(ix(8), v);
+	public void writeLong(int p, long v) {
+		U.putLong(base + p, v);
 	}
 
 	// protobuf impl
@@ -370,6 +373,11 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 	// }
 	// }
+
+	@Override
+	public void writeLong(long v) {
+		U.putLong(ix(8), v);
+	}
 
 	public void writePrimitiveArray(int k, Object o) {
 

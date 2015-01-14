@@ -146,6 +146,14 @@ public final class Bits {
 		}
 	}
 
+	public static long expandMemory(long base, int newLim, int pos) {
+		long rv = allocateMemory(newLim);
+
+		U.copyMemory(base, rv, pos);
+
+		return rv;
+	}
+
 	public static synchronized void freeMemory(long address) {
 		long mem = ADDR_TO_UNALIGNED == null ? address : ADDR_TO_UNALIGNED.remove(address);
 
@@ -154,7 +162,7 @@ public final class Bits {
 		U.freeMemory(mem);
 	}
 
-	public static long reallocateMemory(long base, long newLim, int sz) {
+	public static long reallocateMemory(long base, long newLim) {
 		return U.reallocateMemory(base, newLim);
 	}
 

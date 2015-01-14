@@ -2,7 +2,6 @@ package com.nc.gs.interpreter;
 
 import static com.nc.gs.util.Utils.abbrevCN;
 import static com.nc.gs.util.Utils.abbrevCNs;
-import static com.nc.gs.util.Utils.asInt;
 import static org.objectweb.asm.Opcodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ARETURN;
 import static org.objectweb.asm.Opcodes.BIPUSH;
@@ -97,9 +96,9 @@ public final class Symbols {
 	public static String _R_optimizedArrayName(String type, ExtendedType[] compTypes, com.nc.gs.interpreter.Shape s) {
 		if (compTypes.length == 1) {
 			String n = type == null ? compTypes[0].name : type;
-			return String.format(_Tags.CSOptimizer.CN_ARRAY_TEMPLATE, abbrevCN(n, '_'), s.canBeNull() ? 1 : 0, s.disregardRefs() ? 1 : 0);
+			return String.format(_Tags.CSOptimizer.CN_ARRAY_TEMPLATE, abbrevCN(n, '_'), s.nullSymbol(), s.refSymbol());
 		} else {
-			return String.format(_Tags.MultiCSOptimizer.CN_ARRAY_TEMPLATE, abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.canBeNull() ? 1 : 0, s.disregardRefs() ? 1 : 0);
+			return String.format(_Tags.MultiCSOptimizer.CN_ARRAY_TEMPLATE, abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
 		}
 	}
 
@@ -107,7 +106,7 @@ public final class Symbols {
 		String template = compTypes.length == 1 ? _Tags.CSOptimizer.CN_TEMPLATE : _Tags.MultiCSOptimizer.CN_TEMPLATE;
 
 		return String.format(template, colIN == null ? "POLY" : abbrevCN(colIN, '_'),//
-				forRep ? "$R$" : "", abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.canBeNull() ? 1 : 0, s.disregardRefs() ? 1 : 0);
+				forRep ? "$R$" : "", abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
 	}
 
 	public static String _R_optimizedMapName(String mapIN, com.nc.gs.interpreter.Shape ks, com.nc.gs.interpreter.Shape vs, boolean forRep) {
@@ -122,8 +121,7 @@ public final class Symbols {
 			template = _Tags.MSOptimizer.CN_TEMPLATE;
 		}
 
-		return String.format(template, mapIN == null ? "POLY" : abbrevCN(mapIN, '_'), forRep ? "$R$" : "", abbrevCNs(kh.types, "", "|", true, !kh.complete), abbrevCNs(vh.types, "", "|", true, !vh.complete), asInt(ks.canBeNull()), asInt(ks.disregardRefs()), asInt(vs.canBeNull()), asInt(vs.disregardRefs()));
-
+		return String.format(template, mapIN == null ? "POLY" : abbrevCN(mapIN, '_'), forRep ? "$R$" : "", abbrevCNs(kh.types, "", "|", true, !kh.complete), abbrevCNs(vh.types, "", "|", true, !vh.complete), ks.nullSymbol(), ks.refSymbol(), vs.nullSymbol(), vs.refSymbol());
 	}
 
 	public static String _R_optimizedSetName(String setIN, ExtendedType[] types, com.nc.gs.interpreter.Shape s) {
@@ -555,7 +553,6 @@ public final class Symbols {
 		mv.visitVarInsn(ALOAD, streamIx);
 
 		boolean compressed = fi.isCompressed();
-		boolean canCompress = compressed;
 
 		String get;
 		String getD;
@@ -566,12 +563,10 @@ public final class Symbols {
 		case Type.BOOLEAN:
 			get = _Source.unpackZ;
 			getD = _Source.unpackZ_D;
-			canCompress = true;
 			break;
 		case Type.BYTE:
 			get = _Source.getB;
 			getD = _Source.getB_D;
-			canCompress = false;
 			break;
 		case Type.SHORT:
 			if (compressed) {

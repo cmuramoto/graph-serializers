@@ -1,5 +1,8 @@
 package com.nc.gs.tests;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -170,6 +173,29 @@ public abstract class AbstractRoundTripTests {
 	public static <T> T roundTrip(T root) {
 		Assert.assertNotNull("Root object cannot be null.", root);
 		return roundTrip(SerializerFactory.serializer(root.getClass()), root);
+	}
+
+	public static <T> T roundTripIO(T root) throws IOException {
+		Assert.assertNotNull("Root object cannot be null.", root);
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+		try (Context c = Context.writing()) {
+			c.write(baos, root, false);
+		}
+
+		try (Context c = Context.reading()) {
+			@SuppressWarnings("unchecked")
+			T rec = (T) c.read(new ByteArrayInputStream(baos.toByteArray()), root.getClass());
+
+			if (root.getClass().isArray()) {
+				Assert.assertTrue(Arrays.deepEquals((Object[]) root, (Object[]) rec));
+			} else {
+				Assert.assertEquals(root, rec);
+			}
+
+			return rec;
+		}
 	}
 
 	public static Shape COLLECTION = Shape.stateless(ObjectShape.COLLECTION);

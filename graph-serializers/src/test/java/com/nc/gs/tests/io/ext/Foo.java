@@ -1,4 +1,4 @@
-package com.nc.gs.tests.ext;
+package com.nc.gs.tests.io.ext;
 
 public class Foo implements GExternalizable {
 

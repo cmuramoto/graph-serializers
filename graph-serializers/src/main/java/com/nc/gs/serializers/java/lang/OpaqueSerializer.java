@@ -1,12 +1,12 @@
 package com.nc.gs.serializers.java.lang;
 
-import static com.nc.gs.core.Serializer.readNested;
-import static com.nc.gs.core.Serializer.writeNested;
 import static symbols.io.abstraction._Tags.Serializer.NULL;
+import static symbols.io.abstraction._Tags.Serializer.NULL_I;
 import static symbols.io.abstraction._Tags.Serializer.TYPE_ID;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -19,8 +19,53 @@ import com.nc.gs.util.Utils;
 
 public class OpaqueSerializer extends GraphSerializer {
 
+	public static final Object readNested(Context c, Source src) {
+		Object rv;
+
+		int id = src.readVarInt();
+
+		if (id == NULL_I) {
+			rv = null;
+		} else if (id == TYPE_ID) {
+			Class<?> type = c.readType(src);
+			id = src.readVarInt();
+			GraphSerializer serializer = c.forType(type);
+			rv = serializer.instantiate(src);
+			c.mark(rv, id);
+			serializer.inflateData(c, src, rv);
+		} else {
+			rv = c.from(id);
+		}
+
+		return rv;
+	}
+
+	/**
+	 * Defines a reliable way of writing an object, without any prior knowledge regarding it's type
+	 * or state (possibly being null). This method must be compensated by
+	 * {@link GraphSerializer#readNested(Context, ByteBuffer)}.
+	 *
+	 * @param c
+	 * @param dst
+	 * @param o
+	 */
+	public static final void writeNested(Context c, Sink dst, Object o) {
+		if (o == null) {
+			dst.write(NULL);
+			return;
+		}
+
+		GraphSerializer gs = c.forNested(dst, o);
+
+		if (gs != null) {
+			gs.writeData(c, dst, o);
+		}
+	}
+
 	final Class<?> type;
+
 	final Field[] refs;
+
 	final Field[] prims;
 
 	public OpaqueSerializer(Class<?> type, Set<String> includes) {
@@ -36,7 +81,7 @@ public class OpaqueSerializer extends GraphSerializer {
 
 			for (Field f : fields) {
 				if (!Modifier.isStatic(f.getModifiers()) && (!Modifier.isTransient(f.getModifiers())//
-								|| includes != null && includes.contains(f.getName()))) {
+						|| includes != null && includes.contains(f.getName()))) {
 					if (f.getType().isPrimitive()) {
 						allPrims.add(f);
 					} else {

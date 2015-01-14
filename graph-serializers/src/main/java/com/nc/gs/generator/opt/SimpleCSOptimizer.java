@@ -96,7 +96,7 @@ public class SimpleCSOptimizer extends ClassVisitor {
 				resource = TEMPLATE;
 			}
 			if (targetName == null) {
-				targetName = Symbols._R_optimizedCollectionName(colType == null ? null : colType.getName(), ExtendedType.forRuntime(new Class<?>[]{ type }), shape,forRep);
+				targetName = Symbols._R_optimizedCollectionName(colType == null ? null : colType.getName(), ExtendedType.forRuntime(new Class<?>[]{ type }), shape, forRep);
 			}
 		} else {
 			throw new IllegalArgumentException("Unsupported Shape: " + shape);
@@ -200,7 +200,7 @@ public class SimpleCSOptimizer extends ClassVisitor {
 				}
 				curr = next != null ? next : curr.getNext();
 			}
-		} else if ((fl & ObjectShape.ARRAY) != 0) {
+		} else if ((s & ObjectShape.ARRAY) != 0) {
 			CtorInfo.createInstantiateForArray(cv, t.getInternalName());
 		}
 	}
@@ -238,7 +238,7 @@ public class SimpleCSOptimizer extends ClassVisitor {
 					if (n.var == GS_OFF) {
 						next = curr.getNext();
 						insnList.remove(curr);
-					} else if ((n.var - 1) >= GS_OFF) {
+					} else if (n.var - 1 >= GS_OFF) {
 						// don't shift locals below minimum offset (4)
 						n.var--;
 					}
@@ -293,13 +293,13 @@ public class SimpleCSOptimizer extends ClassVisitor {
 
 					if (gsR && n.name.equals(_List.get)) {
 						insnList.//
-							insert(curr, new TypeInsnNode(CHECKCAST, t.getInternalName()));
+						insert(curr, new TypeInsnNode(CHECKCAST, t.getInternalName()));
 					}
 
 				} else if (n.owner.equals(_Iterator.name)) {
 					if (gsR && n.name.equals(_Iterator.next)) {
 						insnList.//
-							insert(curr, new TypeInsnNode(CHECKCAST, t.getInternalName()));
+						insert(curr, new TypeInsnNode(CHECKCAST, t.getInternalName()));
 					}
 				} else if (n.owner.equals(_GraphSerializer.name)) {
 					String newOwner = null;

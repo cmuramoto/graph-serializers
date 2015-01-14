@@ -10,6 +10,8 @@ import gnu.trove.strategy.IdentityHashingStrategy;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -18,6 +20,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.nc.gs.ds.ClassTable;
+import com.nc.gs.io.In;
+import com.nc.gs.io.Out;
 import com.nc.gs.io.Sink;
 import com.nc.gs.io.Source;
 import com.nc.gs.log.Log;
@@ -27,16 +31,40 @@ import com.nc.gs.util.Utils;
 @SuppressWarnings("restriction")
 public final class Context implements AutoCloseable {
 
-	static final class Chunk {
+	final class Chunk {
 
 		byte[] hb;
 		final Sink dst;
 		final Source src;
 
 		public Chunk() {
-			grow(4096);
+			grow(128);
 			dst = new Sink(4096);
 			src = new Source();
+		}
+
+		int copy(In input) throws IOException {
+			int len;
+
+			if (!input.isStream()) {
+				len = input.read();
+				if (len > hb.length) {
+					grow(len);
+				}
+				input.readFully(hb, len);
+			} else {
+				len = 0;
+				int r;
+
+				while ((r = input.read(hb, len, hb.length - len)) > 0) {
+					len += r;
+					if (len >= hb.length) {
+						grow(hb.length);
+					}
+				}
+			}
+
+			return len;
 		}
 
 		public void grow(int moreBytes) {
@@ -47,57 +75,65 @@ public final class Context implements AutoCloseable {
 			}
 		}
 
-		public <T> void inflate(Context c, DataInput input, T instance) throws IOException {
-			int len = input.readInt();
-			if (len > hb.length) {
-				grow(len);
-			}
-			input.readFully(hb, 0, len);
+		public <T> void inflate(In input, T instance) throws IOException {
+			int len = copy(input);
 
-			GraphSerializer gs = c.forType(instance.getClass());
-			c.mark(instance, ID_BASE);
-			gs.inflateData(c, src.filledWith(hb, 0, len), instance);
+			GraphSerializer gs = forType(instance.getClass());
+			mark(instance, ID_BASE);
+			gs.inflateData(Context.this, src.filledWith(hb, 0, len), instance);
 		}
 
 		@SuppressWarnings("unchecked")
-		public <T> T read(Context c, DataInput input) throws IOException {
-			int id = input.readInt();
+		public <T> T read(In input) throws IOException {
+			int id = input.read();
 			Class<?> type;
 
 			if (id > 0) {
 				type = ct.type(id);
 			} else {
-				type = Utils.forName(input.readUTF());
+				type = Utils.forName(input.readString());
 			}
 
-			int len = input.readInt();
-			if (len > hb.length) {
-				grow(len);
-			}
-			input.readFully(hb, 0, len);
+			int len = copy(input);
 
-			GraphSerializer gs = c.forType(type);
-			return (T) gs.read(c, src.filledWith(hb, 0, len));
+			GraphSerializer gs = forType(type);
+			return (T) gs.readRoot(Context.this, src.filledWith(hb, 0, len));
 		}
 
-		public <T> void write(Context c, DataOutput output, T obj, boolean wt) throws IOException {
+		@SuppressWarnings("unchecked")
+		public <T> T read(In input, Class<T> type) throws IOException {
+			int len = copy(input);
+
+			GraphSerializer gs = forType(type);
+			return (T) gs.readRoot(Context.this, src.filledWith(hb, 0, len));
+		}
+
+		public <T> void write(Out output, T obj, boolean wt) throws IOException {
 			dst.clear();
 
-			GraphSerializer gs = c.forType(obj.getClass());
+			GraphSerializer gs = forType(obj.getClass());
 
 			if (wt) {
 				int id = ct.id(obj.getClass());
-				output.writeInt(id);
+				output.write(id);
 
 				if (id <= 0) {
-					output.writeUTF(obj.getClass().getName());
+					output.write(obj.getClass().getName());
 				}
 			}
 
-			gs.writeRoot(c, dst, obj);
-
+			gs.writeRoot(Context.this, dst, obj);
 			int sz = dst.position();
-			output.writeInt(sz);
+
+			if (!output.isStream()) {
+				output.write(sz);
+			}
+
+			if (sz > hb.length) {
+				// make flush one-step
+				grow(sz);
+			}
+
 			dst.flushTo(output, hb);
 		}
 
@@ -303,6 +339,8 @@ public final class Context implements AutoCloseable {
 
 	Object[] refs = new Object[256];
 
+	int maxId;
+
 	boolean write;
 
 	private Context() {
@@ -313,7 +351,8 @@ public final class Context implements AutoCloseable {
 		if (write) {
 			m.clear();
 		} else {
-			Bits.clearFast(refs);
+			Bits.clearFast(refs, maxId);
+			maxId = 0;
 		}
 
 		CONTEXTS.offer(this);
@@ -381,8 +420,12 @@ public final class Context implements AutoCloseable {
 		return m.get(o);
 	}
 
-	<T> void inflate(DataInput in, T instance) throws IOException {
-		getChunk().inflate(this, in, instance);
+	public <T> void inflate(DataInput in, T instance) throws IOException {
+		getChunk().inflate(In.of(in), instance);
+	}
+
+	<T> void inflate(InputStream in, T instance) throws IOException {
+		getChunk().inflate(In.of(in), instance);
 	}
 
 	public Instantiator instantiatorOf(Class<?> type) {
@@ -427,6 +470,9 @@ public final class Context implements AutoCloseable {
 			refs = this.refs = Arrays.copyOf(refs, Math.max(refs.length * 2, id + 64));
 		}
 
+		// maxId = Math.max(id, maxId);
+		maxId++;
+
 		refs[id - ID_BASE] = o;
 	}
 
@@ -444,7 +490,19 @@ public final class Context implements AutoCloseable {
 	}
 
 	<T> T read(DataInput in) throws IOException {
-		return getChunk().read(this, in);
+		return getChunk().read(In.of(in));
+	}
+
+	public <T> T read(DataInput in, Class<T> type) throws IOException {
+		return getChunk().read(In.of(in), type);
+	}
+
+	<T> T read(InputStream in) throws IOException {
+		return getChunk().read(In.of(in));
+	}
+
+	public <T> T read(InputStream in, Class<T> type) throws IOException {
+		return getChunk().read(In.of(in), type);
 	}
 
 	public Object readRefAndData(Source src) {
@@ -545,8 +603,12 @@ public final class Context implements AutoCloseable {
 		}
 	}
 
-	<T> void write(DataOutput out, T obj, boolean wt) throws IOException {
-		getChunk().write(this, out, obj, wt);
+	public <T> void write(DataOutput out, T obj, boolean wt) throws IOException {
+		getChunk().write(Out.of(out), obj, wt);
+	}
+
+	public <T> void write(OutputStream out, T obj, boolean wt) throws IOException {
+		getChunk().write(Out.of(out), obj, wt);
 	}
 
 	private void writeForCompatibility(Sink dst, Class<?> type) {

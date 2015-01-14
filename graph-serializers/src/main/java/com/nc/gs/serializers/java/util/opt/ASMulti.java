@@ -64,24 +64,23 @@ public class ASMulti {
 		dst.writeVarInt(len);
 
 		int loops = len >>> 6;
-				int l = (len & 63) == 0 ? loops : loops + 1;
+		int l = (len & 63) == 0 ? loops : loops + 1;
 
-				int ix = 0;
+		int ix = 0;
 
-				Object v;
-				for (int i = 0; i < l; i++) {
-					int max = i != loops ? 64 : len & 63;
-					int pos = dst.reserveMask(max);
+		Object v;
+		for (int i = 0; i < l; i++) {
+			int max = i != loops ? 64 : len & 63;
+			int pos = dst.reserveMask(max);
 
-					long fl = 0L;
-					for (int j = 0; j < max; j++) {
-						if ((v = o[ix++]) != null) {
-							fl |= 1L << j;
-							IC_W(c, dst, v);
-						}
-					}
-					dst.encodeMask(max, pos, fl);
+			long fl = 0L;
+			for (int j = 0; j < max; j++) {
+				if ((v = o[ix++]) != null) {
+					fl |= 1L << j;
+					IC_W(c, dst, v);
 				}
-
+			}
+			dst.encodeMask(max, pos, fl);
+		}
 	}
 }

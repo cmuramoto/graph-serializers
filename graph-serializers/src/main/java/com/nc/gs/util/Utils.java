@@ -8,12 +8,15 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -111,6 +114,10 @@ public class Utils {
 		}
 
 		return builder.toString();
+	}
+
+	public static long address(MappedByteBuffer bb) {
+		return U.getLong(Objects.requireNonNull(bb), ADDR_OFF);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -345,6 +352,20 @@ public class Utils {
 		return new Partition<>(c, size);
 	}
 
+	// public static String readString(final ByteBuffer src) {
+	// int len = unpackI(src);
+	// char[] v = new char[len];
+	//
+	// src.asCharBuffer().get(v, 0, len);
+	//
+	// src.position(src.position() + (len << 1));
+	//
+	// String rv = allocateInstance(String.class);
+	// U.putObject(rv, V_OFF, v);
+	//
+	// return rv;
+	// }
+
 	public static Class<?> primitive(char c) {
 		Class<?> rv;
 
@@ -383,20 +404,6 @@ public class Utils {
 
 		return rv;
 	}
-
-	// public static String readString(final ByteBuffer src) {
-	// int len = unpackI(src);
-	// char[] v = new char[len];
-	//
-	// src.asCharBuffer().get(v, 0, len);
-	//
-	// src.position(src.position() + (len << 1));
-	//
-	// String rv = allocateInstance(String.class);
-	// U.putObject(rv, V_OFF, v);
-	//
-	// return rv;
-	// }
 
 	public static Class<?> primitive(String nameOrDesc) {
 		if (nameOrDesc.length() > 1) {
@@ -474,6 +481,10 @@ public class Utils {
 		U.throwException(ex);
 		// never reached
 		return null;
+	}
+
+	public static void setAddress(MappedByteBuffer mbb, long addr) {
+		U.putLong(Objects.requireNonNull(mbb), ADDR_OFF, addr);
 	}
 
 	public static Pair<Comparator<?>, Integer> shape(Object o) {
@@ -722,6 +733,8 @@ public class Utils {
 
 	public static final long V_OFF;
 
+	static final long ADDR_OFF;
+
 	static {
 
 		try {
@@ -740,6 +753,7 @@ public class Utils {
 
 		EC_OFF = fieldOffset(Class.class, "enumConstants");
 		V_OFF = fieldOffset(String.class, "value");
+		ADDR_OFF = fieldOffset(Buffer.class, "address");
 	}
 
 	public boolean isJavaType(String name) {

@@ -4,12 +4,12 @@ import static com.nc.gs.util.Utils.U;
 
 import java.io.Closeable;
 import java.io.DataInput;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.Buffer;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 
 import org.objectweb.asm.Type;
 
@@ -27,8 +27,8 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return in;
 	}
 
-	public static Source mmap(File file) {
-		return null;
+	public static Source of(MappedByteBuffer bb) {
+		return new Source(Utils.address(bb), bb.capacity());
 	}
 
 	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
@@ -52,6 +52,11 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	public Source(int initialSize) {
 		lim = Utils.nextPowerOfTwo(initialSize);
 		base = Bits.allocateMemory(lim);
+	}
+
+	Source(long address, int capacity) {
+		base = address;
+		lim = capacity;
 	}
 
 	private long advance(int req) {
@@ -86,8 +91,8 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	@Override
-	public void close() throws IOException {
-		U.freeMemory(base);
+	public void close() {
+
 	}
 
 	public long decodeMask(int max) {
@@ -103,9 +108,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 		Bits.copyFrom(base, hb, off, len);
 
-		reset();
-
-		return this;
+		return clear();
 	}
 
 	public Source filledWith(ByteBuffer src, boolean zeroCopy) {
@@ -152,7 +155,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	private void fillGuard(int req) {
 		if (req > lim) {
 			int newLim = Utils.nextPowerOfTwo(lim + req);
-			base = Bits.reallocateMemory(base, newLim, lim);
+			base = Bits.reallocateMemory(base, newLim);
 			lim = newLim;
 		}
 	}
@@ -250,6 +253,10 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	@Override
 	public boolean markSupported() {
 		return true;
+	}
+
+	public Sink mirror() {
+		return new Sink(base, lim);
 	}
 
 	@Override
@@ -431,48 +438,48 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	// protobuf impl
 	public final long readVaLongP() {
 		fastpath: {
-		if (pos == lim) {
-			break fastpath;
-		}
+			if (pos == lim) {
+				break fastpath;
+			}
 
-		Unsafe u = U;
-		long p = base + pos;
+			Unsafe u = U;
+			long p = base + pos;
 
-		long x;
-		int y;
-		if ((y = u.getByte(p++)) >= 0) {
-			pos++;
-			return y;
-		} else if (lim - pos < 10) {
-			break fastpath;
-		} else if ((x = y ^ u.getByte(p++) << 7) < 0L) {
-			x ^= ~0L << 7;
-		} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14;
-		} else if ((x ^= u.getByte(p++) << 21) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
-		} else if ((x ^= (long) u.getByte(p++) << 28) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
-		} else if ((x ^= (long) u.getByte(p++) << 35) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35;
-		} else if ((x ^= (long) u.getByte(p++) << 42) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42;
-		} else if ((x ^= (long) u.getByte(p++) << 49) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49;
-		} else {
-			x ^= (long) u.getByte(p++) << 56;
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49 ^ ~0L << 56;
-			if (x < 0L) {
-				if (u.getByte(p++) < 0L) {
-					break fastpath; // Will throw malformedVarint()
+			long x;
+			int y;
+			if ((y = u.getByte(p++)) >= 0) {
+				pos++;
+				return y;
+			} else if (lim - pos < 10) {
+				break fastpath;
+			} else if ((x = y ^ u.getByte(p++) << 7) < 0L) {
+				x ^= ~0L << 7;
+			} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14;
+			} else if ((x ^= u.getByte(p++) << 21) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
+			} else if ((x ^= (long) u.getByte(p++) << 28) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
+			} else if ((x ^= (long) u.getByte(p++) << 35) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35;
+			} else if ((x ^= (long) u.getByte(p++) << 42) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42;
+			} else if ((x ^= (long) u.getByte(p++) << 49) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49;
+			} else {
+				x ^= (long) u.getByte(p++) << 56;
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49 ^ ~0L << 56;
+				if (x < 0L) {
+					if (u.getByte(p++) < 0L) {
+						break fastpath; // Will throw malformedVarint()
+					}
 				}
 			}
+			pos = (int) (p - base);
+			return x;
 		}
-		pos = (int) (p - base);
-		return x;
-	}
 
-	return readRawVarint64SlowPath();
+		return readRawVarint64SlowPath();
 	}
 
 	public char readVarChar() {
@@ -651,13 +658,6 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	public void reset() {
 		pos = mark;
 		mark = 0;
-	}
-
-	public Sink shared() {
-		Sink s = new Sink();
-		s.base = base;
-		s.lim = lim;
-		return s;
 	}
 
 	@Override

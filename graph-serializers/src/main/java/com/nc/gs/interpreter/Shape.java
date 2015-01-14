@@ -24,9 +24,6 @@ import com.nc.gs.util.Utils;
 
 public final class Shape implements Cloneable {
 
-	public static Shape SHAPELESS_COL = new Shape(null, ObjectShape.COLLECTION);
-	public static Shape SHAPELESS_SET = new Shape(null, ObjectShape.SET);
-
 	public static int kindOf(Collection<?> o) {
 		int k;
 
@@ -57,8 +54,7 @@ public final class Shape implements Cloneable {
 		} else if (Set.class.isAssignableFrom(ct)) {
 			rv = ObjectShape.SET;
 		} else {
-			rv = Utils.nullIfNotConcrete(ct) == null ? ObjectShape.UNKONW
-					: ObjectShape.COLLECTION;
+			rv = Utils.nullIfNotConcrete(ct) == null ? ObjectShape.UNKONW : ObjectShape.COLLECTION;
 		}
 		return rv;
 	}
@@ -137,6 +133,10 @@ public final class Shape implements Cloneable {
 		return new Shape(null, k);
 	}
 
+	public static Shape SHAPELESS_COL = new Shape(null, ObjectShape.COLLECTION);
+
+	public static Shape SHAPELESS_SET = new Shape(null, ObjectShape.SET);
+
 	public Object state;
 
 	public int k;
@@ -154,26 +154,41 @@ public final class Shape implements Cloneable {
 		return (k & ObjectShape.NULLABLE) != 0;
 	}
 
+	@Override
+	public Shape clone() {
+		try {
+			return (Shape) super.clone();
+		} catch (CloneNotSupportedException e) {
+			throw new InternalError(e.getMessage());
+		}
+	}
+
 	public boolean disregardRefs() {
 		return (k & ObjectShape.ONLY_PAYLOAD) != 0;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Shape other = (Shape) obj;
-		if (k != other.k)
+		if (k != other.k) {
 			return false;
+		}
 		if (state == null) {
-			if (other.state != null)
+			if (other.state != null) {
 				return false;
-		} else if (!state.equals(other.state))
+			}
+		} else if (!state.equals(other.state)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -190,7 +205,7 @@ public final class Shape implements Cloneable {
 		Hierarchy h = hierarchy();
 
 		// return !h.superType.isFinal() || !h.complete;
-		return !h.complete || (h.types != null && h.types.length > 1);
+		return !h.complete || h.types != null && h.types.length > 1;
 	}
 
 	public Hierarchy hierarchy() {
@@ -233,8 +248,16 @@ public final class Shape implements Cloneable {
 		return (k & ObjectShape.ENUM_SET) == ObjectShape.ENUM_SET;
 	}
 
+	public boolean isHierarchyComplete() {
+		return state instanceof Hierarchy && ((Hierarchy) state).complete;
+	}
+
 	public boolean isSet() {
 		return (k & ObjectShape.SET) != 0;
+	}
+
+	public int nullSymbol() {
+		return canBeNull() ? 1 : 0;
 	}
 
 	public void onStack(MethodVisitor mv) {
@@ -251,8 +274,11 @@ public final class Shape implements Cloneable {
 		}
 		Symbols.loadNumber(mv, k);
 
-		mv.visitMethodInsn(INVOKESPECIAL, _Shape.name, _Class.ctor,
-				_Shape.statefulCtor, false);
+		mv.visitMethodInsn(INVOKESPECIAL, _Shape.name, _Class.ctor, _Shape.statefulCtor, false);
+	}
+
+	public int refSymbol() {
+		return disregardRefs() ? 1 : 0;
 	}
 
 	public void setDisregardRefs(boolean op) {
@@ -293,17 +319,5 @@ public final class Shape implements Cloneable {
 		this.k = k;
 
 		return this;
-	}
-
-	public boolean isHierarchyComplete() {
-		return state instanceof Hierarchy && ((Hierarchy) state).complete;
-	}
-	
-	public Shape clone(){
-		try {
-			return (Shape) super.clone();
-		} catch (CloneNotSupportedException e) {
-			throw new InternalError(e.getMessage());
-		}
 	}
 }

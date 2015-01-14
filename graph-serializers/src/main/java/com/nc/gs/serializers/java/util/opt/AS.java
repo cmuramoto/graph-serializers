@@ -59,29 +59,27 @@ public class AS {
 		Object[] o = (Object[]) val;
 		int len = o.length;
 
-		dst.writeInt(len);
+		dst.writeVarInt(len);
 
 		int loops = len >>> 6;
-				int l = (len & 63) == 0 ? loops : loops + 1;
+		int l = (len & 63) == 0 ? loops : loops + 1;
 
-				dst.writeVarInt(loops);
+		int ix = 0;
+		Object v;
 
-				int ix = 0;
-				Object v;
+		for (int i = 0; i < l; i++) {
+			int max = i != loops ? 64 : len & 63;
+			long fl = 0L;
+			int pos = dst.reserveMask(max);
 
-				for (int i = 0; i < l; i++) {
-					int max = i != loops ? 64 : len & 63;
-					long fl = 0L;
-					int pos = dst.reserveMask(max);
-
-					for (int j = 0; j < max; j++) {
-						if ((v = o[ix++]) != null) {
-							fl |= 1L << j;
-							gs.write(c, dst, v);
-						}
-					}
-
-					dst.encodeMask(max, pos, fl);
+			for (int j = 0; j < max; j++) {
+				if ((v = o[ix++]) != null) {
+					fl |= 1L << j;
+					gs.write(c, dst, v);
 				}
+			}
+
+			dst.encodeMask(max, pos, fl);
+		}
 	}
 }

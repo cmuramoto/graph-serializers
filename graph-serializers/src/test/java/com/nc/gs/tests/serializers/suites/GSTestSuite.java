@@ -3,6 +3,7 @@ package com.nc.gs.tests.serializers.suites;
 import org.junit.runners.Suite.SuiteClasses;
 
 import com.nc.gs.tests.AbstractGSSuite;
+import com.nc.gs.tests.serializers.cyclic.TreeNodeTest;
 import com.nc.gs.tests.serializers.graphs.cols.TestCollectionDeclarations;
 import com.nc.gs.tests.serializers.graphs.cols.TestReplacingBean;
 import com.nc.gs.tests.serializers.graphs.cols.TestSerializersForOpaqueLogicalTypes;
@@ -19,7 +20,7 @@ import com.nc.gs.tests.serializers.reification.TestMapReification;
 		TestCollectionDeclarations.class, TestTrees.class, TestICObjects.class,
 		TestArraySerReification.class, TestCollSerReification.class,
 		TestMapReification.class, TestReplacingBean.class,
-		TestSerializersForOpaqueTypes.class ,TestSerializersForOpaqueLogicalTypes.class})
+		TestSerializersForOpaqueTypes.class ,TestSerializersForOpaqueLogicalTypes.class,TreeNodeTest.class})
 public abstract class GSTestSuite extends AbstractGSSuite {
 
 }
