@@ -151,7 +151,7 @@ public final class SerializerFactory {
 			}
 		} else {
 			if (shape.isEnumSet()) {
-				rv = EnumSetSerializer.basic();
+				rv = EnumSetSerializer.of(shape.hierarchy().opUniqueConcrete().orElse(null));
 			} else {
 				if (colType == null && (types == null || types.length != 1) && shape.canBeNull() && !shape.disregardRefs()) {
 					rv = SetSerializer.basic();

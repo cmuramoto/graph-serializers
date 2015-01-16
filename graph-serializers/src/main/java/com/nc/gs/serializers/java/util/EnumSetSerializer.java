@@ -1,8 +1,6 @@
 package com.nc.gs.serializers.java.util;
 
 import static com.nc.gs.util.Utils.U;
-import static symbols.io.abstraction._Tags.Serializer.FALSE;
-import static symbols.io.abstraction._Tags.Serializer.TRUE;
 
 import java.util.EnumSet;
 
@@ -16,11 +14,16 @@ import com.nc.gs.util.Utils;
 
 public final class EnumSetSerializer extends GraphSerializer {
 
-	public static EnumSetSerializer basic() {
-		EnumSetSerializer rv = basic;
+	public static EnumSetSerializer of(Class<?> kind) {
+		EnumSetSerializer rv;
+		if (kind == null || !kind.isEnum()) {
+			rv = basic;
 
-		if (rv == basic) {
-			basic = rv = new EnumSetSerializer();
+			if (rv == basic) {
+				basic = rv = new EnumSetSerializer();
+			}
+		} else {
+			rv = new EnumSetSerializer(kind);
 		}
 
 		return rv;
@@ -39,44 +42,43 @@ public final class EnumSetSerializer extends GraphSerializer {
 	static EnumSetSerializer basic;
 
 	private EnumSetSerializer() {
+		this(null);
 	}
 
-	@SuppressWarnings("restriction")
+	private EnumSetSerializer(@SuppressWarnings("rawtypes") Class type) {
+		this.type = type;
+	}
+
+	final Class<?> type;
+
+	@SuppressWarnings({ "restriction", "unchecked", "rawtypes" })
 	@Override
 	public Object instantiate(Source src) {
-		Class<?> type = Context.rawReadType(src);
-
-		Object rv;
-
-		if (src.readByte() == TRUE) {
-			rv = Utils.allocateInstance(JUMBO);
-			long[] l = src.readLongArray();
-			U.putObject(rv, JE_OFF, l);
-		} else {
-			rv = Utils.allocateInstance(REG);
-			U.putLong(rv, RE_OFF, src.readVarLong());
-		}
-
-		U.putObject(rv, ET_OFF, type);
-
-		return rv;
-	}
-
-	@SuppressWarnings({ "restriction", "rawtypes" })
-	@Override
-	public void writeData(Context c, Sink dst, Object o) {
-		EnumSet es = (EnumSet) o;
-
-		Class<?> type = (Class<?>) U.getObject(es, ET_OFF);
-
-		Context.rawWriteType(dst, type);
+		Class type = this.type == null ? Context.rawReadType(src) : this.type;
+		EnumSet es = EnumSet.noneOf(type);
 
 		if (es.getClass() == REG) {
-			dst.writeByte(FALSE);
-			dst.writeVarLong(U.getLong(es, RE_OFF));
+			U.putLong(es, RE_OFF, src.readVarLong());
 		} else {
-			dst.writeByte(TRUE);
-			long[] l = (long[]) U.getObject(es, JE_OFF);
+			long[] l = src.readLongArray();
+			U.putObject(es, JE_OFF, l);
+		}
+
+		return es;
+	}
+
+	@SuppressWarnings({ "restriction" })
+	@Override
+	public void writeData(Context c, Sink dst, Object o) {
+		Class<?> type = this.type;
+		if (type == null) {
+			Context.rawWriteType(dst, (Class<?>) U.getObject(o, ET_OFF));
+		}
+
+		if (o.getClass() == REG) {
+			dst.writeVarLong(U.getLong(o, RE_OFF));
+		} else {
+			long[] l = (long[]) U.getObject(o, JE_OFF);
 			dst.writeVarInt(l.length);
 			dst.write(l, 0, l.length);
 		}

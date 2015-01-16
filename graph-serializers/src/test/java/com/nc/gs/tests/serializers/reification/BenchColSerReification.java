@@ -90,7 +90,7 @@ public class BenchColSerReification extends AbstractRoundTripTests {
 
 					roundTrip(cs, coll, s);
 
-					Assert.assertEquals(probeNoValidate(cs, coll), probeNoValidate(gs, coll, s));
+					Assert.assertEquals(probeNoValidate(cs, coll,s), probeNoValidate(gs, coll, s));
 
 					compare(coll, cs, gs);
 
