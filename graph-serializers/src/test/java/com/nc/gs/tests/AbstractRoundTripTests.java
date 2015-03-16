@@ -174,6 +174,11 @@ public abstract class AbstractRoundTripTests {
 		Assert.assertNotNull("Root object cannot be null.", root);
 		return roundTrip(SerializerFactory.serializer(root.getClass()), root);
 	}
+	
+	public static <T> T roundTrip(T root,Sink dst) {
+		Assert.assertNotNull("Root object cannot be null.", root);
+		return roundTrip(SerializerFactory.serializer(root.getClass()), root,dst);
+	}
 
 	public static <T> T roundTripIO(T root) throws IOException {
 		Assert.assertNotNull("Root object cannot be null.", root);

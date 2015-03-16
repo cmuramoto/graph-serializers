@@ -8,6 +8,7 @@ import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.NEW;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
@@ -147,12 +148,15 @@ public final class Hierarchy {
 	}
 
 	public Class<?> uniqueConcrete() {
+		return opUniqueConcrete().orElseThrow(()->new IllegalStateException("N-Types: "+types==null?"":Arrays.toString(types)));
+	}
+	
+	public Optional<Class<?>> opUniqueConcrete(){
 		ExtendedType[] types = this.types;
-
-		if (types == null || types.length != 1) {
-			throw new IllegalStateException(String.format("Hierarchy is polymorphic or inconsistent: %s", Arrays.toString(types)));
-		}
-
-		return types[0].runtimeType();
+		
+		return (types == null || types.length != 1)?//
+				Optional.empty():Optional.of(types[0].runtimeType());
+		
+				
 	}
 }

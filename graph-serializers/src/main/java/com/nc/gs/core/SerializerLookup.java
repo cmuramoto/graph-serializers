@@ -55,7 +55,7 @@ public abstract class SerializerLookup implements Comparable<SerializerLookup> {
 				rv = new ProxySerializer(clazz);
 			} else if (Set.class.isAssignableFrom(clazz)) {
 				if (EnumSet.class.isAssignableFrom(clazz)) {
-					rv = EnumSetSerializer.basic();
+					rv = EnumSetSerializer.of(null);
 				} else {
 					rv = SetSerializer.basic();
 				}
