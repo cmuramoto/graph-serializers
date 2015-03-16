@@ -333,6 +333,7 @@ public class TypeMappings {
 						throw new IllegalMappingException(ex.getMessage());
 					} else {
 						Log.warn("Error in attempt to load %s on bootstrap.", ex.getMessage());
+						b++;
 						itr.remove();
 						continue;
 					}
