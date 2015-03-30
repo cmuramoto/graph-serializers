@@ -77,7 +77,7 @@ public final class Shape implements Cloneable {
 			k = 0;
 		}
 
-		return s == null && k == 0 ? SHAPELESS_COL : new Shape(s, k);
+		return (s == null) && (k == 0) ? SHAPELESS_COL : new Shape(s, k);
 	}
 
 	public static Shape of(Map<?, ?> m) {
@@ -107,7 +107,7 @@ public final class Shape implements Cloneable {
 			k = 0;
 		}
 
-		return s == null && k == 0 ? SHAPELESS_SET : new Shape(s, k);
+		return (s == null) && (k == 0) ? SHAPELESS_SET : new Shape(s, k);
 	}
 
 	public static Object state(int s, Collection<?> o) {
@@ -205,7 +205,7 @@ public final class Shape implements Cloneable {
 		Hierarchy h = hierarchy();
 
 		// return !h.superType.isFinal() || !h.complete;
-		return !h.complete || h.types != null && h.types.length > 1;
+		return h.isPolymorphic();
 	}
 
 	public Hierarchy hierarchy() {
@@ -219,11 +219,11 @@ public final class Shape implements Cloneable {
 			throw new IllegalStateException();
 		}
 
-		ExtendedType[] types = h.types;
+		ExtendedType[] types = h.types();
 
 		Class<?>[] rv;
 
-		if (types == null || types.length == 0) {
+		if ((types == null) || (types.length == 0)) {
 			rv = null;
 		} else {
 			rv = new Class<?>[types.length];
@@ -249,7 +249,7 @@ public final class Shape implements Cloneable {
 	}
 
 	public boolean isHierarchyComplete() {
-		return state instanceof Hierarchy && ((Hierarchy) state).complete;
+		return (state instanceof Hierarchy) && ((Hierarchy) state).complete;
 	}
 
 	public boolean isSet() {

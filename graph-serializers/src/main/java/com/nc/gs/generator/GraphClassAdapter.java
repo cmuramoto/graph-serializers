@@ -51,8 +51,7 @@ import com.nc.gs.util.Pair;
 
 public abstract class GraphClassAdapter extends ClassVisitor {
 
-	private static void collectEnums(Map<String, Type> map,
-			List<FieldInfo> infos) {
+	private static void collectEnums(Map<String, Type> map, List<FieldInfo> infos) {
 
 		if (infos == null) {
 			return;
@@ -98,20 +97,19 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 	List<FieldInfo> nonNullable;
 
-	public GraphClassAdapter(ClassInfo root, GenerationStrategy strategy,
-			ClassVisitor cv) {
+	public GraphClassAdapter(ClassInfo root, GenerationStrategy strategy, ClassVisitor cv) {
 		super(Opcodes.ASM5, cv);
 		this.root = root;
 		this.strategy = strategy;
 
 		Pair<String, Boolean> pA = GenerationStrategy.prefixForSerializer(root);
 
-		this.targetName = Symbols.graphSerializerName(pA.k);
-		this.targetDesc = "L" + targetName + ";";
+		targetName = Symbols.graphSerializerName(pA.k);
+		targetDesc = "L" + targetName + ";";
 
 		Pair<String, String> pB = strategy.superSerializerNameAndDesc(root);
-		this.targetSuperName = pB.k;
-		this.targetSuperDesc = pB.v;
+		targetSuperName = pB.k;
+		targetSuperDesc = pB.v;
 
 		prims = strategy.segregatePrimitiveFields(root);
 		nullable = strategy.segregateNullableFields(root);
@@ -123,19 +121,16 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 		for (Entry<Type, CachedField> e : es) {
 			CachedField cf = e.getValue();
-			if (cf == null || cf.isReified) {
+			if ((cf == null) || cf.isReified) {
 				continue;
 			}
 			mv.visitLdcInsn(e.getKey());
-			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name,
-					_SerializerFactory.serializer,
-					_SerializerFactory.serializer_D, false);
+			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
 			mv.visitTypeInsn(CHECKCAST, cf.serializerIN);
-			mv.visitFieldInsn(PUTSTATIC, targetName, cf.targetFieldName,
-					cf.serializerDesc());
+			mv.visitFieldInsn(PUTSTATIC, targetName, cf.targetFieldName, cf.serializerDesc());
 		}
 
-		List<SpecialField> cfs = this.sfCache;
+		List<SpecialField> cfs = sfCache;
 
 		if (cfs != null) {
 			for (SpecialField cf : cfs) {
@@ -150,8 +145,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 		CachedField cf = cachedFields.get(pojo);
 
 		if (cf == null) {
-			cf = new CachedField(targetCachedFieldName(pojo.getInternalName()),
-					serializer, false);
+			cf = new CachedField(targetCachedFieldName(pojo.getInternalName()), serializer, false);
 			cachedFields.put(pojo, cf);
 		}
 
@@ -176,22 +170,19 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 			String fn = fieldNameForEnum(iN);
 			String arrayDesc = "[" + desc;
 
-			FieldVisitor fv = cv.visitField(ACC_PRIVATE + ACC_STATIC
-					+ ACC_FINAL, fn, arrayDesc, null, null);
+			FieldVisitor fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, fn, arrayDesc, null, null);
 			fv.visitEnd();
 
 			mv.visitLdcInsn(type);
 
-			mv.visitMethodInsn(INVOKESTATIC, _Util.name, _Util.sharedEC,
-					_Util.sharedEC_D, false);
+			mv.visitMethodInsn(INVOKESTATIC, _Util.name, _Util.sharedEC, _Util.sharedEC_D, false);
 			mv.visitTypeInsn(CHECKCAST, arrayDesc);
 			mv.visitFieldInsn(PUTSTATIC, targetName, fn, arrayDesc);
 		}
 	}
 
 	protected void clinit() {
-		MethodVisitor mv = cv.visitMethod(ACC_STATIC, _Class.ClassInitializer,
-				_Class.NO_ARG_VOID, null, null);
+		MethodVisitor mv = cv.visitMethod(ACC_STATIC, _Class.ClassInitializer, _Class.NO_ARG_VOID, null, null);
 		mv.visitCode();
 
 		clinitBody(mv);
@@ -238,19 +229,16 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	/**
 	 * First Instruction in the initializer is to call
 	 * {@link SerializerFactory#register(Class, com.nc.gs.core.GraphSerializer)}
-	 * 
+	 *
 	 * @param mv
 	 */
 	private void eagerSelfRegister(MethodVisitor mv) {
 		mv.visitLdcInsn(root.type());
 		mv.visitTypeInsn(NEW, targetName);
 		mv.visitInsn(DUP);
-		mv.visitMethodInsn(INVOKESPECIAL, targetName, _Class.ctor,
-				_Class.NO_ARG_VOID, false);
+		mv.visitMethodInsn(INVOKESPECIAL, targetName, _Class.ctor, _Class.NO_ARG_VOID, false);
 		// mv.visitInsn(POP);
-		mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name,
-				_SerializerFactory.register, _SerializerFactory.register_D,
-				false);
+		mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.register, _SerializerFactory.register_D, false);
 
 	}
 
@@ -258,7 +246,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 		if (fi.hasDeclaredHierarchy()) {
 			Map<ICKey, ICVal> ics = lazyGetICMap();
 			Hierarchy h = fi.hierarchy();
-			ExtendedType[] gens = h.types;
+			ExtendedType[] gens = h.types();
 			ICKey key = new ICKey(fi, gens);
 			ICVal val = ics.get(key);
 
@@ -282,10 +270,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 				h.sers = sers;
 				h.reified = mask;
 
-				ICSlot slot = new ICSlot(targetName, null, h,
-						val.writeMethod = disambiguate(fi.writeInlineName()),
-						val.readMethod = disambiguate(fi.readInlineName()),
-						fi.disregardReference());
+				ICSlot slot = new ICSlot(targetName, null, h, val.writeMethod = disambiguate(fi.writeInlineName()), val.readMethod = disambiguate(fi.readInlineName()), fi.disregardReference());
 				slot.writeDesc = val.writeMethodDesc = fi.writeInlineDesc();
 				slot.readDesc = val.readMethodDesc = fi.readInlineDesc();
 				slot.patchInlineCaches(cv, false);
@@ -326,13 +311,11 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 		for (Entry<Type, CachedField> pendingGen : cachedFields.entrySet()) {
 			CachedField value = pendingGen.getValue();
-			if (value == null || !value.isReified) {
+			if ((value == null) || !value.isReified) {
 				continue;
 			}
 			mv.visitLdcInsn(pendingGen.getKey());
-			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name,
-					_SerializerFactory.serializer,
-					_SerializerFactory.serializer_D, false);
+			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
 			mv.visitInsn(POP);
 		}
 	}
@@ -341,13 +324,11 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	 * Creates a no-arg constructor for the generated type
 	 */
 	final void init() {
-		MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, _Object.init,
-				_Class.NO_ARG_VOID, null, null);
+		MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, _Object.init, _Class.NO_ARG_VOID, null, null);
 		mv.visitCode();
 		mv.visitVarInsn(ALOAD, 0);
 		// mv.visitLdcInsn(Bootstrap.getClassTableImpl().id(root.runtimeType()));
-		mv.visitMethodInsn(INVOKESPECIAL, targetSuperName, _Object.init,
-				_GraphSerializer.ctor_D, false);
+		mv.visitMethodInsn(INVOKESPECIAL, targetSuperName, _Object.init, _GraphSerializer.ctor_D, false);
 		mv.visitInsn(RETURN);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
@@ -356,46 +337,41 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	private void initializeParentSerializer(MethodVisitor mv) {
 		if (strategy.usesParentDelegation()) {
 			mv.visitLdcInsn(root.superType());
-			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name,
-					_SerializerFactory.serializer,
-					_SerializerFactory.serializer_D, false);
+			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
 			mv.visitTypeInsn(CHECKCAST, targetSuperName);
 			mv.visitFieldInsn(PUTSTATIC, targetName, "SUPER", targetSuperDesc);
 		}
 	}
 
 	protected Map<ICKey, ICVal> lazyGetICMap() {
-		Map<ICKey, ICVal> rv = this.ics;
+		Map<ICKey, ICVal> rv = ics;
 		if (rv == null) {
-			rv = this.ics = new THashMap<>(4);
+			rv = ics = new THashMap<>(4);
 		}
 
 		return rv;
 	}
 
 	protected Set<String> lazyGetOverloads() {
-		Set<String> rv = this.icOverloads;
+		Set<String> rv = icOverloads;
 		if (rv == null) {
-			rv = this.icOverloads = new THashSet<>(4);
+			rv = icOverloads = new THashSet<>(4);
 		}
 		return rv;
 	}
 
 	public String reifiedWriteRefOrPaylodDesc(Type t) {
-		return String.format("(%s%s%s)V", _Context.desc, _Sink.desc,
-				t.getDescriptor());
+		return String.format("(%s%s%s)V", _Context.desc, _Sink.desc, t.getDescriptor());
 	}
 
 	public String serializerDescFor(Type t) {
 		try {
-			Class<?> rt = Class.forName(t.getClassName(), false, Thread
-					.currentThread().getContextClassLoader());
+			Class<?> rt = Class.forName(t.getClassName(), false, Thread.currentThread().getContextClassLoader());
 			GraphSerializer lookup = SerializerFactory.lookup(rt);
 
 			if (lookup == null) {
 				cachedFields.put(t, null);
-				return "L" + t.getInternalName()
-						+ _SerializerFactory.genClassSuffix_D;
+				return "L" + t.getInternalName() + _SerializerFactory.genClassSuffix_D;
 			}
 
 			return Type.getDescriptor(lookup.getClass());
@@ -416,25 +392,20 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 			if (rv == null) {
 
 				String serIN;
-				Class<?> rt = Class.forName(t.getClassName(), false, Thread
-						.currentThread().getContextClassLoader());
+				Class<?> rt = Class.forName(t.getClassName(), false, Thread.currentThread().getContextClassLoader());
 
 				boolean gen;
 				GraphSerializer lookup = SerializerFactory.lookup(rt);
 
 				if (lookup == null) {
 					gen = rt.getClassLoader() != null;
-					serIN = t.getInternalName()
-							+ _SerializerFactory.genClassSuffix;
+					serIN = t.getInternalName() + _SerializerFactory.genClassSuffix;
 				} else {
 					gen = lookup.getClass().isSynthetic();
 					serIN = Type.getInternalName(lookup.getClass());
 				}
 
-				cachedFields
-						.put(t,
-								rv = new CachedField(targetCachedFieldName(t
-										.getInternalName()), serIN, gen));
+				cachedFields.put(t, rv = new CachedField(targetCachedFieldName(t.getInternalName()), serIN, gen));
 			}
 			return rv;
 		} catch (ClassNotFoundException e) {
@@ -443,9 +414,9 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	}
 
 	List<SpecialField> sfCacheLazy() {
-		List<SpecialField> cfs = this.sfCache;
+		List<SpecialField> cfs = sfCache;
 		if (cfs == null) {
-			cfs = this.sfCache = new ArrayList<>(2);
+			cfs = sfCache = new ArrayList<>(2);
 		}
 
 		return cfs;
@@ -479,8 +450,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 		FieldVisitor fv;
 
 		if (strategy.usesParentDelegation()) {
-			fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, "SUPER",
-					targetSuperDesc, null, null);
+			fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, "SUPER", targetSuperDesc, null, null);
 			fv.visitEnd();
 		}
 
@@ -488,17 +458,16 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 		for (Entry<Type, CachedField> e : es) {
 			CachedField cf = e.getValue();
-			if (cf == null || cf.isReified) {
+			if ((cf == null) || cf.isReified) {
 				continue;
 			}
-			fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL,
-					cf.targetFieldName, cf.serializerDesc(), null, null);
+			fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, cf.targetFieldName, cf.serializerDesc(), null, null);
 			fv.visitEnd();
 		}
 	}
 
 	void verifyCollectionSerializers() {
-		List<FieldInfo> list = this.nullable;
+		List<FieldInfo> list = nullable;
 
 		int seq = -1;
 		if (list != null) {
@@ -513,7 +482,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 			}
 		}
 
-		list = this.nonNullable;
+		list = nonNullable;
 
 		if (list != null) {
 			for (FieldInfo fi : list) {
@@ -527,7 +496,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 			}
 		}
 
-		List<SpecialField> map = this.sfCache;
+		List<SpecialField> map = sfCache;
 
 		if (map != null) {
 			for (SpecialField cf : map) {
@@ -538,11 +507,9 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	}
 
 	@Override
-	public final void visit(int version, int access, String name,
-			String signature, String superName, String[] interfaces) {
+	public final void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
 
-		super.visit(version, strategy.serializerAccessModifier(root),
-				targetName, signature, targetSuperName, interfaces);
+		super.visit(version, strategy.serializerAccessModifier(root), targetName, signature, targetSuperName, interfaces);
 	}
 
 	@Override

@@ -33,7 +33,7 @@ public final class ICKey {
 	}
 
 	public ICKey(FieldInfo info, Hierarchy h) {
-		this(info.desc, getDescs(h.types), info.disregardReference());
+		this(info.desc, getDescs(h.types()), info.disregardReference());
 	}
 
 	public ICKey(String fieldDescriptor, String[] typeDescriptors, boolean onlyPayload) {
@@ -46,22 +46,29 @@ public final class ICKey {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		ICKey other = (ICKey) obj;
 		if (fieldDescriptor == null) {
-			if (other.fieldDescriptor != null)
+			if (other.fieldDescriptor != null) {
 				return false;
-		} else if (!fieldDescriptor.equals(other.fieldDescriptor))
+			}
+		} else if (!fieldDescriptor.equals(other.fieldDescriptor)) {
 			return false;
-		if (onlyPayload != other.onlyPayload)
+		}
+		if (onlyPayload != other.onlyPayload) {
 			return false;
-		if (!Arrays.equals(typeDescriptors, other.typeDescriptors))
+		}
+		if (!Arrays.equals(typeDescriptors, other.typeDescriptors)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -69,9 +76,9 @@ public final class ICKey {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((fieldDescriptor == null) ? 0 : fieldDescriptor.hashCode());
-		result = prime * result + (onlyPayload ? 1231 : 1237);
-		result = prime * result + Arrays.hashCode(typeDescriptors);
+		result = (prime * result) + ((fieldDescriptor == null) ? 0 : fieldDescriptor.hashCode());
+		result = (prime * result) + (onlyPayload ? 1231 : 1237);
+		result = (prime * result) + Arrays.hashCode(typeDescriptors);
 		return result;
 	}
 

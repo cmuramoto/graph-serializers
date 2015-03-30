@@ -92,22 +92,26 @@ public class MultiCSOptimizer extends ClassVisitor {
 				targetName = Symbols._R_optimizedArrayName(null, ExtendedType.forRuntime(types), shape);
 			}
 
-		} else if (shape.isCollection() || colType == null) {
+		} else if (shape.isCollection() || (colType == null)) {
 
 			resource = TEMPLATE;
 			if (targetName == null) {
-				targetName = Symbols._R_optimizedCollectionName(colType == null ? null : colType.getName(), ExtendedType.forRuntime(types), shape,forRep);
+				targetName = Symbols._R_optimizedCollectionName(colType == null ? null : colType.getName(), ExtendedType.forRuntime(types), shape, forRep);
 			}
 		} else {
 
 			throw new IllegalArgumentException();
 		}
 
+		String javaName = targetName.replace('/', '.');
+
 		try {
-			return (GraphSerializer) Class.forName(targetName.replace('/', '.')).getDeclaredField(INSTANCE).get(null);
+			return (GraphSerializer) Class.forName(javaName).getDeclaredField(INSTANCE).get(null);
 		} catch (Exception e) {
 			Log.info("Generating %s", targetName);
 		}
+
+		byte[] bc;
 
 		try (VisitationContext vc = VisitationContext.current()) {
 
@@ -139,15 +143,28 @@ public class MultiCSOptimizer extends ClassVisitor {
 
 				cr.accept(opt, ClassReader.SKIP_DEBUG);
 
-				byte[] bc = cw.toByteArray();
+				bc = cw.toByteArray();
 
 				Utils.writeClass(slot.serializer.replace("[]", "_"), bc);
-
-				return (GraphSerializer) GraphClassLoader.INSTANCE.load(null, bc).getDeclaredField(INSTANCE).get(null);
 			}
 
 		} catch (Exception e) {
 			return Utils.rethrow(e);
+		} catch (LinkageError le) {
+			try {
+				return (GraphSerializer) Class.forName(javaName).getDeclaredField(INSTANCE).get(null);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		try {
+			return (GraphSerializer) GraphClassLoader.INSTANCE.load(null, bc).getDeclaredField(INSTANCE).get(null);
+		} catch (Throwable le) {
+			try {
+				return (GraphSerializer) Class.forName(javaName).getDeclaredField(INSTANCE).get(null);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
@@ -209,7 +226,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 
 		boolean ctKnown = ct != null;
 		InsnList insnList = mn.instructions;
-		boolean coll = (fl & ObjectShape.COLLECTION) != 0 || !ctKnown;
+		boolean coll = ((fl & ObjectShape.COLLECTION) != 0) || !ctKnown;
 		boolean array = (fl & ObjectShape.ARRAY) != 0;
 		boolean rep = (fl & ObjectShape.REPLACEMENT) != 0;
 
@@ -220,7 +237,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 
 			if (curr instanceof TypeInsnNode) {
 				TypeInsnNode n = (TypeInsnNode) curr;
-				if (ctKnown && !rep && n.getOpcode() == CHECKCAST && (n.desc.equals(_Collection.name) || n.desc.equals(_List.name) || n.desc.equals(_Set.name))) {
+				if (ctKnown && !rep && (n.getOpcode() == CHECKCAST) && (n.desc.equals(_Collection.name) || n.desc.equals(_List.name) || n.desc.equals(_Set.name))) {
 					n.desc = ct.getInternalName();
 				}
 			} else if (curr instanceof FieldInsnNode) {
@@ -229,7 +246,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 				if (n.getOpcode() == GETSTATIC) {
 					n.owner = slot.serializer;
 
-					if (ctr != null && n.name.equals(_Tags.CSOptimizer.ctr)) {
+					if ((ctr != null) && n.name.equals(_Tags.CSOptimizer.ctr)) {
 						n.desc = ctr.getDescriptor();
 					}
 
@@ -238,7 +255,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 				MethodInsnNode n = (MethodInsnNode) curr;
 
 				if (n.getOpcode() == INVOKESTATIC) {
-					if (coll && n.owner.equals(templateIN) || (array && n.owner.equals(templateINARRAY)) || n.owner.equals(templateINSET)) {
+					if ((coll && n.owner.equals(templateIN)) || (array && n.owner.equals(templateINARRAY)) || n.owner.equals(templateINSET)) {
 						n.owner = slot.serializer;
 					}
 				}
@@ -364,7 +381,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-		if (ctr != null && name.equals(_Tags.MultiCSOptimizer.ctr)) {
+		if ((ctr != null) && name.equals(_Tags.MultiCSOptimizer.ctr)) {
 			return super.visitField(access | ACC_FINAL, name, ctr.getDescriptor(), signature, value);
 		}
 
@@ -375,7 +392,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		MethodVisitor rv = null;
 
-		if (i == null && name.startsWith(_GraphSerializer.instantiate)) {
+		if ((i == null) && name.startsWith(_GraphSerializer.instantiate)) {
 			if (ct == null) {
 				if (name.endsWith("U")) {
 					rv = i = new MethodNode(access | ACC_FINAL, _GraphSerializer.instantiate, desc, signature, exceptions);

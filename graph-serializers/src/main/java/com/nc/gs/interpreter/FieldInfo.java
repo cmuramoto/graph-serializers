@@ -27,6 +27,7 @@ import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.TypePath;
 
 import symbols.io.abstraction._ArraySerializer;
 import symbols.io.abstraction._CollectionSerializer;
@@ -75,6 +76,11 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			return optimize;
 		}
 
+		ShapeVisitor shapeVisitor() {
+			ShapeVisitor sv = shapeVisitor;
+			return sv != null ? sv : (shapeVisitor = new ShapeVisitor());
+		}
+
 		@Override
 		public void visit(String name, Object value) {
 			switch (name) {
@@ -95,21 +101,21 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		@Override
 		public AnnotationVisitor visitAnnotation(String name, String desc) {
 			if (desc.equals(_Meta.Shape.desc)) {
-				return shapeVisitor = new ShapeVisitor();
+				return shapeVisitor();
 			}
 			return null;
 		}
 
 		@Override
 		public void visitEnd() {
-			ExtendedType ci = concreteImpl;
-			if (ci != null && ci.isAbstract()) {
+			final ExtendedType ci = concreteImpl;
+			if ((ci != null) && ci.isAbstract()) {
 				Log.warn("Declared concreteImpl as an abstract type[%s]. Information will be disregarded!", ci.getClassName());
 
 				concreteImpl = null;
 			}
 
-			ShapeVisitor s = shapeVisitor;
+			final ShapeVisitor s = shapeVisitor;
 
 			if (s != null) {
 
@@ -133,7 +139,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				complete = (boolean) value;
 			} else {
 				// visiting array
-				ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
+				final ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
 
 				if (et.isAbstract()) {
 					Log.warn("Declared Hierarchy with an abstract type [%s]. Bypassing.", et.getClassName());
@@ -184,9 +190,19 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			return val;
 		}
 
+		public ShapeVisitor key() {
+			ShapeVisitor k = key;
+			return k != null ? k : (key = new ShapeVisitor());
+		}
+
 		@Override
 		public String toString() {
 			return MessageFormat.format("Map [key={0}, val={1}]", key, val);
+		}
+
+		private ShapeVisitor val() {
+			ShapeVisitor v = val;
+			return v != null ? v : (val = new ShapeVisitor());
 		}
 
 		@Override
@@ -210,9 +226,9 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		public AnnotationVisitor visitAnnotation(String name, String desc) {
 			switch (name) {
 			case _Meta.Map.key:
-				return key = new ShapeVisitor();
+				return key();
 			case _Meta.Map.val:
-				return val = new ShapeVisitor();
+				return val();
 			default:
 				return null;
 			}
@@ -237,15 +253,16 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		boolean onlyPayload = false;
 		boolean nullable = true;
 		boolean complete = true;
+		boolean isLeaf = false;
 
 		public ShapeVisitor() {
 			super(Opcodes.ASM5);
 		}
 
 		public ExtendedType first() {
-			Set<ExtendedType> h = hierarchy;
+			final Set<ExtendedType> h = hierarchy;
 
-			if (h != null && !h.isEmpty()) {
+			if ((h != null) && !h.isEmpty()) {
 				return h.iterator().next();
 			}
 			return null;
@@ -284,7 +301,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				if (hierarchy == null) {
 					hierarchy = new THashSet<>(2);
 				}
-				ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
+				final ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
 
 				if (et.isAbstract()) {
 					Log.warn("Declared Hierarchy with an abstract type [%s]. Bypassing.", et.getClassName());
@@ -315,37 +332,57 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 	static ExtendedType[] mergeConcreteGenericInfo(ExtendedType superType, ShapeVisitor s) {
 
-		Set<ExtendedType> rv = new THashSet<>(2);
+		ExtendedType[] rv;
 
-		if (!superType.isAbstract() && !superType.desc.equals(ExtendedType.OBJECT.desc)) {
-			rv.add(superType);
-		}
+		final Set<ExtendedType> types = new THashSet<>(2);
 
-		if (s != null) {
-			Set<ExtendedType> hierarchy = s.hierarchy;
+		check: {
+			if (s != null) {
+				if (s.isLeaf) {
+					rv = new ExtendedType[]{ superType };
+					break check;
+				} else {
+					final Set<ExtendedType> hierarchy = s.hierarchy;
 
-			if (hierarchy != null) {
-				for (ExtendedType et : hierarchy) {
-					if (et != null && !et.isAbstract()) {
-						if (et.isA(superType)) {
-							rv.add(et);
-						} else {
-							Log.warn("ShapeVisitor declares type %s not in hierarchy of %s. Bypassing.", et.name, superType.name);
+					if (hierarchy != null) {
+						for (final ExtendedType et : hierarchy) {
+							if ((et != null) && !et.isAbstract()) {
+								if (et.isA(superType)) {
+									types.add(et);
+								} else {
+									Log.warn("ShapeVisitor declares type %s not in hierarchy of %s. Bypassing.", et.name, superType.name);
+								}
+							}
 						}
 					}
 				}
 			}
-		}
 
-		return rv.isEmpty() ? null : rv.toArray(new ExtendedType[rv.size()]);
+			int last = 0;
+
+			types.remove(superType);
+
+			if (!superType.isAbstract() && !superType.desc.equals(ExtendedType.OBJECT.desc)) {
+				last++;
+			}
+
+			rv = types.toArray(new ExtendedType[types.size() + last]);
+
+			if (last > 0) {
+				rv[rv.length - 1] = superType;
+			} else if (rv.length == 0) {
+				rv = null;
+			}
+		}
+		return rv;
 	}
 
 	public long access;
+
 	public String name;
 	public String desc;
 	public String signature;
 	public long offset;
-
 	final ExtendedType owner;
 
 	ExtendedType type;
@@ -393,16 +430,16 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	private MapField asSpecialMap() {
-		com.nc.gs.interpreter.Shape sk = new com.nc.gs.interpreter.Shape(ObjectShape.NULLABLE);
+		final com.nc.gs.interpreter.Shape sk = new com.nc.gs.interpreter.Shape(ObjectShape.NULLABLE);
 
-		com.nc.gs.interpreter.Shape sv = new com.nc.gs.interpreter.Shape(ObjectShape.NULLABLE);
+		final com.nc.gs.interpreter.Shape sv = new com.nc.gs.interpreter.Shape(ObjectShape.NULLABLE);
 
 		boolean rep = false;
 		boolean optimize = false;
 
 		ExtendedType mt = null;
 
-		Pair<Hierarchy, Hierarchy> pair = mergeHierarchyForMap();
+		final Pair<Hierarchy, Hierarchy> pair = mergeHierarchyForMap();
 
 		sk.state = pair.k;
 		sv.state = pair.v;
@@ -417,16 +454,16 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			access &= ~ACC_LEAF;
 		}
 
-		MapMeta meta = mapMeta();
+		final MapMeta meta = mapMeta();
 
 		if (meta != null) {
 
-			if (mt == null || mt.isAbstract()) {
+			if ((mt == null) || mt.isAbstract()) {
 				mt = meta.getConcreteImpl();
 			}
 
-			ShapeVisitor ks = meta.getKey();
-			ShapeVisitor vs = meta.getVal();
+			final ShapeVisitor ks = meta.getKey();
+			final ShapeVisitor vs = meta.getVal();
 
 			if (ks != null) {
 				sk.setNullable(ks.isNullable());
@@ -464,13 +501,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 	private IterableField asSpecialStream() {
 		// default values
-		com.nc.gs.interpreter.Shape s = new com.nc.gs.interpreter.Shape(null, isEnumSet() ? ObjectShape.ENUM_SET : isSet() ? ObjectShape.SET : isArray() ? ObjectShape.ARRAY : ObjectShape.COLLECTION).with(true, false);
+		final com.nc.gs.interpreter.Shape s = new com.nc.gs.interpreter.Shape(null, isEnumSet() ? ObjectShape.ENUM_SET : isSet() ? ObjectShape.SET : isArray() ? ObjectShape.ARRAY : ObjectShape.COLLECTION).with(true, false);
 
-		Hierarchy h = mergedHierarchyForStreameable();
+		final Hierarchy h = mergedHierarchyForStreameable();
 
 		ExtendedType type = null;
 
-		ExtendedType[] types = h.types;
+		ExtendedType[] types = h.types();
 
 		s.state = h;
 
@@ -480,7 +517,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		String targetIN = null;
 		String targetD = null;
 
-		CollectionMeta meta = collectionMeta();
+		final CollectionMeta meta = collectionMeta();
 
 		if (isTypeFinalOrLeaf()) {
 			if (isArray()) {
@@ -492,37 +529,25 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		}
 
 		if (meta != null) {
-			ExtendedType colType = meta.concreteImpl;
+			final ExtendedType colType = meta.concreteImpl;
 
 			if (type == null) {
-				if (colType != null && !colType.isAbstract()) {
+				if ((colType != null) && !colType.isAbstract()) {
 					type = colType;
 				} else {
 					type = type();
 				}
 			}
 
-			ShapeVisitor shapeVisitor = meta.shapeVisitor;
+			final ShapeVisitor shapeVisitor = meta.shapeVisitor;
 
 			if (shapeVisitor != null) {
-				if (shapeVisitor.nullable) {
-					s.k |= ObjectShape.NULLABLE;
-				} else {
-					s.k &= ~ObjectShape.NULLABLE;
-				}
-
-				if (shapeVisitor.onlyPayload) {
-					s.k |= shapeVisitor.onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0;
-				} else {
-					s.k &= ~ObjectShape.ONLY_PAYLOAD;
-				}
-
-				// s.k |= shapeVisitor.nullable ? ObjectShape.NULLABLE : 0;
-				// s.k |= shapeVisitor.onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0;
+				s.k |= shapeVisitor.nullable ? ObjectShape.NULLABLE : 0;
+				s.k |= shapeVisitor.onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0;
 			}
 
-			if (types != null && types.length > 0) {
-				if (!isArray() || getDimension() == 1) {
+			if ((types != null) && (types.length > 0)) {
+				if (!isArray() || (getDimension() == 1)) {
 					opt = meta.optimize;
 				}
 			}
@@ -544,11 +569,11 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			}
 		}
 
-		if (type == null && !isArray()) {
+		if ((type == null) && !isArray()) {
 			type = type();
 		}
 
-		if (targetD == null || targetIN == null) {
+		if ((targetD == null) || (targetIN == null)) {
 			if (s.isSet()) {
 				if (s.isEnumSet()) {
 					targetIN = _EnumSetSerializer.name;
@@ -558,7 +583,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 					targetD = _SetSerializer.desc;
 				}
 			} else if (s.isArray()) {
-				if (types != null && types.length == 1 && h.complete) {
+				if ((types != null) && (types.length == 1) && h.complete) {
 					targetIN = _LeaftTypeArraySerializer.name;
 					targetD = _LeaftTypeArraySerializer.desc;
 					s.k |= ObjectShape.LEAF_ARRAY;
@@ -590,15 +615,19 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public boolean canBeNull() {
-		return !isPrimitive() && (access & ACC_NON_NULL) == 0;
+		return !isPrimitive() && ((access & ACC_NON_NULL) == 0);
 	}
 
 	public boolean canBeOpaque() {
-		return (access & ACC_MAYBE_OPAQUE) != 0 && (type().isInterface() || type().isAbstract());
+		return ((access & ACC_MAYBE_OPAQUE) != 0) && (type().isInterface() || type().isAbstract());
 	}
 
 	public CollectionMeta collectionMeta() {
 		return (CollectionMeta) (overlaid instanceof CollectionMeta ? overlaid : null);
+	}
+
+	CollectionMeta collectionMetaLazy() {
+		return (CollectionMeta) (overlaid instanceof CollectionMeta ? overlaid : (overlaid = new CollectionMeta()));
 	}
 
 	@Override
@@ -611,7 +640,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public CollectionMeta getCollectionMeta() {
-		Object ov = overlaid;
+		final Object ov = overlaid;
 
 		if (ov instanceof CollectionMeta) {
 			return (CollectionMeta) ov;
@@ -627,17 +656,17 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	public ExtendedType[] getGenericParameters() {
 		ExtendedType[] rv;
 
-		String sig = signature;
+		final String sig = signature;
 
-		if (sig == null || sig.isEmpty()) {
+		if ((sig == null) || sig.isEmpty()) {
 			rv = null;
 		} else {
-			int start = sig.indexOf('<');
+			final int start = sig.indexOf('<');
 
-			int end = sig.lastIndexOf('>');
+			final int end = sig.lastIndexOf('>');
 
 			// invalid sig
-			if (start < 0 || end < 0) {
+			if ((start < 0) || (end < 0)) {
 				rv = null;
 			} else {
 				String args = sig.substring(start + 1, end);
@@ -649,7 +678,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 					args = args.replace("*", _Object.desc).replaceAll("[+-]", "");
 
-					Type[] types = Type.getArgumentTypes("(" + args + ")V");
+					final Type[] types = Type.getArgumentTypes("(" + args + ")V");
 
 					rv = new ExtendedType[types.length];
 
@@ -670,8 +699,8 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public boolean hasDeclaredHierarchy() {
-		Set<ExtendedType> gens = overlaidGens();
-		if (gens == null || gens.isEmpty()) {
+		final Set<ExtendedType> gens = overlaidGens();
+		if ((gens == null) || gens.isEmpty()) {
 			return hierarchy instanceof Hierarchy;
 		}
 
@@ -686,16 +715,16 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		Hierarchy rv = (Hierarchy) (hierarchy instanceof Hierarchy ? hierarchy : null);
 
 		if (rv == null) {
-			Set<ExtendedType> gen = overlaidGens();
+			final Set<ExtendedType> gen = overlaidGens();
 
 			if (gen == null) {
 				throw new IllegalStateException("Field does not declare hierarchy!");
 			} else {
-				List<ExtendedType> l = new ArrayList<>(gen.size());
+				final List<ExtendedType> l = new ArrayList<>(gen.size());
 
-				ExtendedType et = type();
+				final ExtendedType et = type();
 
-				for (ExtendedType c : gen) {
+				for (final ExtendedType c : gen) {
 
 					if (c.isAbstract()) {
 						Log.warn("[%s::%s]Invalid generalization declaration [abstract]:%s", owner().simpleName(), name, c.simpleName());
@@ -710,7 +739,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 					l.add(et);
 				}
 
-				ExtendedType[] types = l.toArray(new ExtendedType[l.size()]);
+				final ExtendedType[] types = l.toArray(new ExtendedType[l.size()]);
 				Arrays.sort(types);
 
 				hierarchy = rv = new Hierarchy(et, types, isHierarchyComplete());
@@ -812,12 +841,12 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public boolean isPrimitive() {
-		int s = type().getSort();
-		return s > 0 && s < 9;
+		final int s = type().getSort();
+		return (s > 0) && (s < 9);
 	}
 
 	public boolean isReadAccessible(ExtendedType root) {
-		return (access & Opcodes.ACC_PRIVATE) == 0 && root.isInSameNamespace(owner());
+		return ((access & Opcodes.ACC_PRIVATE) == 0) && ((access & Opcodes.ACC_FINAL) == 0) && root.isInSameNamespace(owner());
 	}
 
 	public boolean isSet() {
@@ -855,7 +884,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				}
 
 			} else {
-				rv = (access & ACC_LEAF) != 0 || type().isFinal() || type().isLeaf();
+				rv = ((access & ACC_LEAF) != 0) || type().isFinal() || type().isLeaf();
 			}
 		}
 		return rv;
@@ -882,18 +911,22 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public boolean isWriteAccessible(ExtendedType root) {
-		return (access & Opcodes.ACC_PRIVATE) == 0 && (access & Opcodes.ACC_FINAL) == 0 && root.isInSameNamespace(owner);
+		return ((access & Opcodes.ACC_PRIVATE) == 0) && ((access & Opcodes.ACC_FINAL) == 0) && root.isInSameNamespace(owner());
 	}
 
 	public MapMeta mapMeta() {
 		return (MapMeta) (overlaid instanceof MapMeta ? overlaid : null);
 	}
 
+	MapMeta mapMetaLazy() {
+		return (MapMeta) (overlaid instanceof MapMeta ? overlaid : (overlaid = new MapMeta()));
+	}
+
 	public ExtendedType[] mergedConcreteTypes() {
 		ExtendedType superType;
 
 		if (isArray()) {
-			ExtendedType ct = type().basicComponentType();
+			final ExtendedType ct = type().basicComponentType();
 
 			if (ct.isPrimitive()) {
 				return null;
@@ -901,13 +934,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 			superType = type().basicComponentType();
 		} else {
-			ExtendedType[] params = getGenericParameters();
+			final ExtendedType[] params = getGenericParameters();
 
-			superType = params != null & params.length == 1 ? params[0] : null;
+			superType = (params != null) & (params.length == 1) ? params[0] : null;
 		}
-		CollectionMeta meta = collectionMeta();
+		final CollectionMeta meta = collectionMeta();
 
-		ShapeVisitor s = meta == null ? null : meta.getShape();
+		final ShapeVisitor s = meta == null ? null : meta.getShape();
 
 		return mergeConcreteGenericInfo(superType, s);
 	}
@@ -917,7 +950,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		ExtendedType[] types = null;
 
 		if (isArray()) {
-			ExtendedType ct = type().basicComponentType();
+			final ExtendedType ct = type().basicComponentType();
 
 			if (ct.isPrimitive() || ct.isAbstract()) {
 				superType = ExtendedType.OBJECT;
@@ -925,21 +958,21 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				superType = ct;
 			}
 		} else {
-			ExtendedType[] params = getGenericParameters();
+			final ExtendedType[] params = getGenericParameters();
 
-			superType = params != null && params.length == 1 ? params[0] : ExtendedType.OBJECT;
+			superType = (params != null) && (params.length == 1) ? params[0] : ExtendedType.OBJECT;
 		}
 
 		boolean complete = superType.isFinal() || superType.isLeaf();
 
-		CollectionMeta meta = collectionMeta();
+		final CollectionMeta meta = collectionMeta();
 		ShapeVisitor s;
 
 		if (meta != null) {
 			s = meta.getShape();
 
-			if (s != null && !complete) {
-				complete = superType != ExtendedType.OBJECT && !superType.isAbstract() && s.complete;
+			if ((s != null) && !complete) {
+				complete = (superType != ExtendedType.OBJECT) && !superType.isAbstract() && (s.complete || s.isLeaf);
 			}
 		} else {
 			s = null;
@@ -951,13 +984,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public Pair<Hierarchy, Hierarchy> mergeHierarchyForMap() {
-		ExtendedType[] types = getGenericParameters();
+		final ExtendedType[] types = getGenericParameters();
 
 		ExtendedType ks;
 
 		ExtendedType vs;
 
-		if (types != null && types.length == 2) {
+		if ((types != null) && (types.length == 2)) {
 			ks = types[0] != null ? types[0] : ExtendedType.OBJECT;
 			vs = types[1] != null ? types[1] : ExtendedType.OBJECT;
 		} else {
@@ -967,20 +1000,20 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		boolean kc = ks.isFinal() || ks.isLeaf();
 		boolean vc = vs.isFinal() || vs.isLeaf();
 
-		MapMeta mm = mapMeta();
+		final MapMeta mm = mapMeta();
 		ShapeVisitor key;
 		ShapeVisitor val;
 
 		if (mm != null) {
 			key = mm.getKey();
 
-			if (key != null && !kc) {
-				kc = key.complete;
+			if ((key != null) && !kc) {
+				kc = key.complete || key.isLeaf;
 			}
 
 			val = mm.getVal();
-			if (val != null && !vc) {
-				vc = val.complete;
+			if ((val != null) && !vc) {
+				vc = val.complete || val.isLeaf;
 			}
 
 		} else {
@@ -1053,7 +1086,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				access |= ACC_NON_SERIALIZED;
 				break;
 			case _Meta.Shape.desc:
-				ShapeVisitor s = new ShapeVisitor();
+				final ShapeVisitor s = new ShapeVisitor();
 				hierarchy = s;
 				return s;
 			case _Meta.Collection.desc:
@@ -1061,17 +1094,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 					Log.warn("@Serialized declaration overrides @Collection.");
 					return null;
 				}
-				CollectionMeta cm = new CollectionMeta();
-				overlaid = cm;
-				return cm;
+				return collectionMetaLazy();
 			case _Meta.Map.desc:
 				if (hasSerializer()) {
 					Log.warn("@Serialized declaration overrides @Map.");
 					return null;
 				}
-				MapMeta m = new MapMeta();
-				overlaid = m;
-				return m;
+				return mapMetaLazy();
 			case _Meta.Hierarchy.desc:
 				AnnotationVisitor rv;
 				if (type().isFinal()) {
@@ -1086,7 +1115,8 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 				return rv;
 			case _Meta.NotNull.desc:
-				// we can't rely on this annotations. We might want to serialize an invalid object.
+				// we can't rely on this annotations. We might want to serialize
+				// an invalid object.
 				// case _Meta.NotNull.javax_D:
 				// case _Meta.NotNull.oval_D:
 				access |= ACC_NON_NULL;
@@ -1108,6 +1138,14 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			case _Meta.MaybeOpaque.desc:
 				access |= ACC_MAYBE_OPAQUE;
 				break;
+			case _Meta.Optimize.desc:
+				ExtendedType type = type();
+				if (type.isA(ExtendedType.MAP)) {
+					mapMetaLazy().optimize = true;
+				} else if (type.isA(ExtendedType.COLLECTION) || type.isArray()) {
+					collectionMetaLazy().optimize = true;
+				}
+				break;
 			default:
 				break;
 			}
@@ -1119,7 +1157,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	@Override
 	public void visitEnd() {
 		if (hierarchy instanceof ShapeVisitor) {
-			ShapeVisitor s = (ShapeVisitor) hierarchy;
+			final ShapeVisitor s = (ShapeVisitor) hierarchy;
 			if (s.nullable) {
 				access &= ~ACC_NON_NULL;
 			} else {
@@ -1138,13 +1176,65 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				access &= ~ACC_COMPLETE_HIERARCHY;
 			}
 		} else if (hierarchy instanceof Generalizations) {
-			Generalizations g = (Generalizations) hierarchy;
+			final Generalizations g = (Generalizations) hierarchy;
 			if (g.complete) {
 				access |= ACC_COMPLETE_HIERARCHY;
 			} else {
 				access &= ~ACC_COMPLETE_HIERARCHY;
 			}
 		}
+	}
+
+	@Override
+	public AnnotationVisitor visitTypeAnnotation(int typeRef, TypePath typePath, String desc, boolean visible) {
+		AnnotationVisitor rv = super.visitTypeAnnotation(typeRef, typePath, desc, visible);
+
+		if (typePath != null) {
+			String s = typePath.toString();
+
+			ShapeVisitor sv = null;
+
+			ExtendedType et = type();
+
+			switch (s) {
+			case "0":
+				if (et.isA(ExtendedType.COLLECTION)) {
+					CollectionMeta meta = collectionMetaLazy();
+					sv = meta.shapeVisitor();
+				} else if (et.isA(ExtendedType.MAP)) {
+					MapMeta meta = mapMetaLazy();
+					sv = meta.key();
+				}
+				break;
+			case "1":
+				if (et.isA(ExtendedType.MAP)) {
+					MapMeta meta = mapMetaLazy();
+					sv = meta.val();
+				}
+			}
+
+			if (sv != null) {
+				switch (desc) {
+				case _Meta.NotNull.desc:
+					sv.nullable = false;
+					break;
+				case _Meta.OnlyPayload.desc:
+					sv.onlyPayload = true;
+					break;
+				case _Meta.LeafNode.desc:
+					sv.complete = true;
+					sv.isLeaf = true;
+					break;
+				case _Meta.Hierarchy.desc:
+					rv = sv;
+				default:
+					break;
+				}
+			}
+
+		}
+
+		return rv;
 	}
 
 	public String writeInlineDesc() {

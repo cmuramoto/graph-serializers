@@ -8,6 +8,7 @@ import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.NEW;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Optional;
 
 import org.objectweb.asm.MethodVisitor;
@@ -19,10 +20,13 @@ import symbols.java.lang._Class;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.SerializerFactory;
 
-public final class Hierarchy {
+public final class Hierarchy implements Comparator<Class<?>> {
 
 	public static Hierarchy from(Class<?>[] types) {
 		Hierarchy h = Hierarchy.unknown();
+
+		Arrays.sort(types, h);
+
 		Type[] sers = new Type[types.length];
 		ExtendedType[] kt = new ExtendedType[types.length];
 
@@ -46,7 +50,7 @@ public final class Hierarchy {
 
 	public ExtendedType superType;
 
-	public ExtendedType[] types;
+	private ExtendedType[] types;
 
 	public Type[] sers;
 
@@ -56,9 +60,14 @@ public final class Hierarchy {
 
 	public long reified;
 
+	boolean sorted;
+
 	public Hierarchy(Class<?> superType, Class<?>[] types, boolean complete) {
 		this.superType = ExtendedType.forRuntime(superType);
-		this.types = types == null || types.length == 0 ? null : ExtendedType.forRuntime(types);
+		if (types != null) {
+			Arrays.sort(types, this);
+		}
+		this.types = (types == null) || (types.length == 0) ? null : ExtendedType.forRuntime(types);
 		this.complete = complete;
 	}
 
@@ -68,28 +77,53 @@ public final class Hierarchy {
 		this.complete = complete;
 	}
 
+	public ExtendedType at(int ix) {
+		if (!sorted) {
+			sort();
+		}
+
+		return types[ix];
+	}
+
+	public Comparator<Class<?>> cmp() {
+		return this;
+	}
+
+	@Override
+	public int compare(Class<?> l, Class<?> r) {
+
+		return l == r ? 0 : l.isAssignableFrom(r) ? +1 : r.isAssignableFrom(l) ? -1 : l.getName().compareTo(r.getName());
+	}
+
 	public boolean declaresTypes() {
-		return types != null && types.length > 0;
+		return (types != null) && (types.length > 0);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		Hierarchy other = (Hierarchy) obj;
-		if (complete != other.complete)
+		if (complete != other.complete) {
 			return false;
+		}
 		if (superType == null) {
-			if (other.superType != null)
+			if (other.superType != null) {
 				return false;
-		} else if (!superType.equals(other.superType))
+			}
+		} else if (!superType.equals(other.superType)) {
 			return false;
-		if (!Arrays.equals(types, other.types))
+		}
+		if (!Arrays.equals(types, other.types)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -98,14 +132,27 @@ public final class Hierarchy {
 		return 0;
 	}
 
+	public boolean isPolymorphic() {
+		return !complete || ((types != null) && (types.length > 1));
+	}
+
 	public Hierarchy markSerializers() {
 		if (declaresTypes()) {
 			long reified = 0l;
 
+			Class<?>[] rts = new Class<?>[types.length];
+
+			for (int i = 0; i < rts.length; i++) {
+				rts[i] = types[i].runtimeType();
+			}
+
+			Arrays.sort(rts, this);
+
 			Type[] sers = new Type[types.length];
 
-			for (int i = 0; i < types.length; i++) {
-				Class<? extends GraphSerializer> gs = SerializerFactory.serializer(types[i].runtimeType()).getClass();
+			for (int i = rts.length - 1; i >= 0; i--) {
+				Class<?> type = rts[i];
+				Class<? extends GraphSerializer> gs = SerializerFactory.serializer(type).getClass();
 				sers[i] = Type.getType(gs);
 				reified |= gs.isSynthetic() ? 1L << i : 0;
 			}
@@ -125,7 +172,7 @@ public final class Hierarchy {
 
 		ExtendedType[] types = this.types;
 
-		if (types == null || types.length == 0) {
+		if ((types == null) || (types.length == 0)) {
 
 			mv.visitInsn(ACONST_NULL);
 
@@ -147,16 +194,60 @@ public final class Hierarchy {
 		mv.visitMethodInsn(INVOKESPECIAL, _Hierarchy.name, _Class.ctor, _Hierarchy.ctor_D, false);
 	}
 
-	public Class<?> uniqueConcrete() {
-		return opUniqueConcrete().orElseThrow(()->new IllegalStateException("N-Types: "+types==null?"":Arrays.toString(types)));
-	}
-	
-	public Optional<Class<?>> opUniqueConcrete(){
+	public Optional<Class<?>> opUniqueConcrete() {
 		ExtendedType[] types = this.types;
-		
-		return (types == null || types.length != 1)?//
-				Optional.empty():Optional.of(types[0].runtimeType());
-		
-				
+
+		return ((types == null) || (types.length != 1)) ? //
+		Optional.empty()
+				: Optional.of(types[0].runtimeType());
+	}
+
+	public Class<?>[] runtimeTypes() {
+		Class<?>[] rv;
+
+		if ((types == null) || (types.length == 0)) {
+			rv = null;
+		} else {
+			rv = new Class<?>[types.length];
+
+			for (int i = 0; i < rv.length; i++) {
+				rv[i] = types[i].runtimeType();
+			}
+
+			Arrays.sort(rv, this);
+		}
+
+		return rv;
+	}
+
+	private void sort() {
+		Class<?>[] rts = runtimeTypes();
+
+		if (rts != null) {
+			ExtendedType[] types = new ExtendedType[rts.length];
+
+			for (int i = 0; i < types.length; i++) {
+				types[i] = ExtendedType.forRuntime(rts[i]);
+			}
+
+			this.types = types;
+		}
+		sorted = true;
+	}
+
+	public int totalTypes() {
+		return types == null ? 0 : types.length;
+	}
+
+	public ExtendedType[] types() {
+		if (!sorted) {
+			sort();
+		}
+
+		return types;
+	}
+
+	public Class<?> uniqueConcrete() {
+		return opUniqueConcrete().orElseThrow(() -> new IllegalStateException(("N-Types: " + types) == null ? "" : Arrays.toString(types)));
 	}
 }

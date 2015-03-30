@@ -94,10 +94,10 @@ public final class SerializerFactory {
 
 		} else {
 			Class<?> compType = shape.hasPolymorphicHierarchy() ? null : shape.hierarchy().uniqueConcrete();
-			if (colType == null && compType == null) {
+			if ((colType == null) && (compType == null)) {
 				rv = shape.disregardRefs() ? //
-						shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
-								: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
+				shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
+						: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
 			} else {
 				rv = new CollectionSerializer(colType, compType, shape.canBeNull(), shape.disregardRefs());
 			}
@@ -119,7 +119,7 @@ public final class SerializerFactory {
 		Class<?>[] kt = ks.hierarchyTypes();
 		Class<?>[] vt = vs.hierarchyTypes();
 
-		if (mt == null && kt == null && vt == null && ks.canBeNull() && !ks.disregardRefs() && vs.canBeNull() && !vs.disregardRefs()) {
+		if ((mt == null) && (kt == null) && (vt == null) && ks.canBeNull() && !ks.disregardRefs() && vs.canBeNull() && !vs.disregardRefs()) {
 			rv = MapSerializer.basic();
 		} else if (ms.opt) {
 			if (!ms.ks.hasPolymorphicHierarchy() && !ms.vs.hasPolymorphicHierarchy()) {
@@ -153,7 +153,7 @@ public final class SerializerFactory {
 			if (shape.isEnumSet()) {
 				rv = EnumSetSerializer.of(shape.hierarchy().opUniqueConcrete().orElse(null));
 			} else {
-				if (colType == null && (types == null || types.length != 1) && shape.canBeNull() && !shape.disregardRefs()) {
+				if ((colType == null) && ((types == null) || (types.length != 1)) && shape.canBeNull() && !shape.disregardRefs()) {
 					rv = SetSerializer.basic();
 				} else {
 					rv = new SetSerializer((Class<? extends Set<?>>) colType, types[0], shape.canBeNull(), shape.disregardRefs());
@@ -206,7 +206,7 @@ public final class SerializerFactory {
 	}
 
 	public static boolean isProbablyOpaque(Class<?> type) {
-		return type.getClassLoader() != GraphSerializer.class.getClassLoader() && !Modifier.isPublic(type.getModifiers()) || lookup(type) instanceof OpaqueSerializer;
+		return ((type.getClassLoader() != GraphSerializer.class.getClassLoader()) && !Modifier.isPublic(type.getModifiers())) || (lookup(type) instanceof OpaqueSerializer);
 	}
 
 	public static GraphSerializer lookup(Class<?> c) {
@@ -230,7 +230,7 @@ public final class SerializerFactory {
 	public static void register(Class<?> type, GraphSerializer gs) {
 		GraphSerializer old = SERIALIZERS.put(type, gs);
 
-		if (old != null && old != gs) {
+		if ((old != null) && (old != gs)) {
 			Log.info("Replaced %s with %s", old, gs);
 		}
 	}

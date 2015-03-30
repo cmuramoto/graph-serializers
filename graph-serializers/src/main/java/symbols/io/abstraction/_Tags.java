@@ -79,7 +79,7 @@ public interface _Tags {
 
 		String CN_ARRAY_TEMPLATE = "MAS/of/{%s}%d%d";
 
-		String CN_SET_TEMPLATE = "SS/of/{%s}%d%d";
+		String CN_SET_TEMPLATE = "MSS/of/%s{%s}%d%d";
 
 		String templateIN = "com/nc/gs/serializers/java/util/opt/CSMulti";
 		String templateINSET = "com/nc/gs/serializers/java/util/opt/SSMulti";

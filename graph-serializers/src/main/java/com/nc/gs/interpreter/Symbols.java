@@ -121,7 +121,7 @@ public final class Symbols {
 			template = _Tags.MSOptimizer.CN_TEMPLATE;
 		}
 
-		return String.format(template, mapIN == null ? "POLY" : abbrevCN(mapIN, '_'), forRep ? "$R$" : "", abbrevCNs(kh.types, "", "|", true, !kh.complete), abbrevCNs(vh.types, "", "|", true, !vh.complete), ks.nullSymbol(), ks.refSymbol(), vs.nullSymbol(), vs.refSymbol());
+		return String.format(template, mapIN == null ? "POLY" : abbrevCN(mapIN, '_'), forRep ? "$R$" : "", abbrevCNs(kh.types(), "", "|", true, !kh.complete), abbrevCNs(vh.types(), "", "|", true, !vh.complete), ks.nullSymbol(), ks.refSymbol(), vs.nullSymbol(), vs.refSymbol());
 	}
 
 	public static String _R_optimizedSetName(String setIN, ExtendedType[] types, com.nc.gs.interpreter.Shape s) {
@@ -160,9 +160,9 @@ public final class Symbols {
 			rv = new InsnNode(ICONST_4);
 			break;
 		default:
-			if (i >= Byte.MIN_VALUE && i <= Byte.MAX_VALUE) {
+			if ((i >= Byte.MIN_VALUE) && (i <= Byte.MAX_VALUE)) {
 				rv = new IntInsnNode(BIPUSH, i);
-			} else if (i >= Short.MIN_VALUE && i <= Short.MAX_VALUE) {
+			} else if ((i >= Short.MIN_VALUE) && (i <= Short.MAX_VALUE)) {
 				rv = new IntInsnNode(SIPUSH, i);
 			} else {
 				rv = new LdcInsnNode(i);
@@ -407,9 +407,9 @@ public final class Symbols {
 			mv.visitInsn(ICONST_4);
 			break;
 		default:
-			if (i >= Byte.MIN_VALUE && i <= Byte.MAX_VALUE) {
+			if ((i >= Byte.MIN_VALUE) && (i <= Byte.MAX_VALUE)) {
 				mv.visitIntInsn(BIPUSH, i);
-			} else if (i >= Short.MIN_VALUE && i <= Short.MAX_VALUE) {
+			} else if ((i >= Short.MIN_VALUE) && (i <= Short.MAX_VALUE)) {
 				mv.visitIntInsn(SIPUSH, i);
 			} else {
 				mv.visitLdcInsn(i);
@@ -418,7 +418,7 @@ public final class Symbols {
 	}
 
 	public static void loadNumber(final MethodVisitor mv, final long l) {
-		if (l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE) {
+		if ((l >= Integer.MIN_VALUE) && (l <= Integer.MAX_VALUE)) {
 			loadNumber(mv, (int) l);
 		} else {
 			mv.visitLdcInsn(l);
@@ -516,7 +516,7 @@ public final class Symbols {
 	public static java.lang.Class<?> primitiveTypeOrArray(Type type) {
 		int s = type.getSort();
 
-		Class<?> rv = s > 0 && s < 9 ? PM[s] : null;
+		Class<?> rv = (s > 0) && (s < 9) ? PM[s] : null;
 
 		if (rv == null) {
 			if (s == Type.ARRAY) {

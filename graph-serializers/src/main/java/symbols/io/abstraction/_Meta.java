@@ -80,6 +80,10 @@ public interface _Meta {
 		String desc = "Lcom/nc/gs/meta/OnlyPayload;";
 	}
 
+	interface Optimize {
+		String desc = "Lcom/nc/gs/meta/Optimize;";
+	}
+
 	interface Serialized {
 		String desc = "Lcom/nc/gs/meta/Serialized;";
 	}
@@ -94,5 +98,4 @@ public interface _Meta {
 
 		String onlyPayload = "onlyPayload";
 	}
-
 }

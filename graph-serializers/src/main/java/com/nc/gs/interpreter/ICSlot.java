@@ -32,7 +32,7 @@ import symbols.java.lang._Object;
 
 /**
  * A container for generating inline caches.
- * 
+ *
  * @author cmuramoto
  */
 public class ICSlot {
@@ -59,7 +59,7 @@ public class ICSlot {
 	}
 
 	public void emitFieldDeclarations(MethodVisitor clinit) {
-		if (h == null || h.sers == null || (h.serNames == null && gsp == null)) {
+		if ((h == null) || (h.sers == null) || ((h.serNames == null) && (gsp == null))) {
 			return;
 		}
 		for (int i = 0; i < h.sers.length; i++) {
@@ -67,7 +67,7 @@ public class ICSlot {
 				String fn = gsp + i;
 				String fDesc = h.sers[i].getDescriptor();
 
-				clinit.visitLdcInsn(h.types[i].type());
+				clinit.visitLdcInsn(h.at(i).type());
 				clinit.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
 				clinit.visitTypeInsn(CHECKCAST, h.sers[i].getInternalName());
 				clinit.visitFieldInsn(PUTSTATIC, serializer, fn, fDesc);
@@ -80,7 +80,7 @@ public class ICSlot {
 	}
 
 	public void patchInlineCaches(ClassVisitor cv, boolean autoPatchDelegates) {
-		int len = (h.types == null) ? 0 : h.types.length;
+		int len = h.totalTypes();
 
 		int ng = !h.complete ? len + 1 : len;
 
@@ -120,11 +120,11 @@ public class ICSlot {
 				if (l != null) {
 					if (!h.complete) {
 						mv.visitVarInsn(ALOAD, REF_OFFSET + 1);
-						mv.visitLdcInsn(h.types[i].type());
+						mv.visitLdcInsn(h.at(i).type());
 						mv.visitJumpInsn(Opcodes.IF_ACMPNE, l);
 					} else {
 						mv.visitVarInsn(ALOAD, REF_OFFSET);
-						mv.visitTypeInsn(INSTANCEOF, h.types[i].name);
+						mv.visitTypeInsn(INSTANCEOF, h.at(i).name);
 						mv.visitJumpInsn(IFEQ, l);
 					}
 				}
@@ -135,7 +135,7 @@ public class ICSlot {
 					Symbols.putByte(mv);
 				}
 
-				if (i < len && (h.reified & (1L << i)) == 0) {
+				if ((i < len) && ((h.reified & (1L << i)) == 0)) {
 					if (h.serNames == null) {
 						mv.visitFieldInsn(GETSTATIC, serializer, gsp + i, h.sers[i].getDescriptor());
 					} else {
@@ -152,9 +152,9 @@ public class ICSlot {
 					if ((h.reified & (1L << i)) == 0) {
 						Symbols.invokeWriteWithOwner(mv, h.sers[i].getInternalName(), op);
 					} else {
-						mv.visitTypeInsn(CHECKCAST, h.types[i].getInternalName());
+						mv.visitTypeInsn(CHECKCAST, h.at(i).getInternalName());
 
-						Symbols._R_invokeWrite(mv, h.sers[i].getInternalName(), h.types[i], op);
+						Symbols._R_invokeWrite(mv, h.sers[i].getInternalName(), h.at(i), op);
 					}
 				} else {
 					Symbols.nullSafeWrite(mv, op);
@@ -199,10 +199,10 @@ public class ICSlot {
 			if ((h.reified & (1L)) == 0) {
 				Symbols.invokeReadWithOwner(mv, h.sers[0].getInternalName(), op);
 				if (readDesc != null) {
-					mv.visitTypeInsn(CHECKCAST, h.types[0].name);
+					mv.visitTypeInsn(CHECKCAST, h.at(0).name);
 				}
 			} else {
-				Symbols._R_invokeRead(mv, h.sers[0].getInternalName(), h.types[0], op);
+				Symbols._R_invokeRead(mv, h.sers[0].getInternalName(), h.at(0), op);
 			}
 
 			mv.visitInsn(ARETURN);
@@ -223,7 +223,7 @@ public class ICSlot {
 			for (int i = 0; i < lbls.length; i++) {
 				mv.visitLabel(lbls[i]);
 
-				if (i < len && (h.reified & (1L << i)) == 0) {
+				if ((i < len) && ((h.reified & (1L << i)) == 0)) {
 					if (h.serNames == null) {
 						mv.visitFieldInsn(GETSTATIC, serializer, gsp + i, h.sers[i].getDescriptor());
 					} else {
@@ -238,10 +238,10 @@ public class ICSlot {
 					if ((h.reified & (1L << i)) == 0) {
 						Symbols.invokeReadWithOwner(mv, h.sers[i].getInternalName(), op);
 						if (readDesc != null) {
-							mv.visitTypeInsn(CHECKCAST, h.types[i].name);
+							mv.visitTypeInsn(CHECKCAST, h.at(i).name);
 						}
 					} else {
-						Symbols._R_invokeRead(mv, h.sers[i].getInternalName(), h.types[i], op);
+						Symbols._R_invokeRead(mv, h.sers[i].getInternalName(), h.at(i), op);
 					}
 				} else {
 					Symbols.nullSafeRead(mv, op);
