@@ -52,10 +52,8 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		}
 
 		@Override
-		public void visit(int version, int access, String name,
-				String signature, String superName, String[] interfaces) {
-			info = new ExtendedType(access, name, superName, signature,
-					interfaces);
+		public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+			info = new ExtendedType(access, name, superName, signature, interfaces);
 		}
 
 		@Override
@@ -71,14 +69,12 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		}
 
 		@Override
-		public void visitInnerClass(String name, String outerName,
-				String innerName, int access) {
+		public void visitInnerClass(String name, String outerName, String innerName, int access) {
 			ExtendedType info = this.info;
 			if (outerName != null) {
 				if (info.name.equals(outerName)) {
 					info.access |= ACC_DECL_INNER;
-				} else if (innerName != null && info.name.startsWith(outerName)
-						&& info.name.endsWith(innerName)) {
+				} else if ((innerName != null) && info.name.startsWith(outerName) && info.name.endsWith(innerName)) {
 					info.access |= (ACC_INNER | access);
 				}
 			} else {
@@ -99,57 +95,6 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 			info.access |= ACC_INNER;
 		}
 
-	}
-
-	static final Class<?>[] PM = { boolean.class, byte.class, char.class,
-			short.class, int.class, float.class, double.class };
-
-	static String[] EMPTY = new String[0];
-
-	static final ExtendedType OBJECT;
-
-	static final ExtendedType BOOLEAN;
-	static final ExtendedType BYTE;
-	static final ExtendedType SHORT;
-	static final ExtendedType CHAR;
-	static final ExtendedType INT;
-	static final ExtendedType FLOAT;
-	static final ExtendedType LONG;
-	static final ExtendedType DOUBLE;
-
-	static final ExtendedType COLLECTION;
-	static final ExtendedType LIST;
-	static final ExtendedType SET;
-	static final ExtendedType MAP;
-	static final ExtendedType ENUM_SET;
-	static final ExtendedType ENUM_MAP;
-
-	static final Pattern SYSTEM_RESOURCES;
-
-	static {
-		BOOLEAN/**/= prim(_Number.boolean_D);
-		CHAR/*   */= prim(_Number.char_D);
-		BYTE/*   */= prim(_Number.byte_D);
-		SHORT/*  */= prim(_Number.short_D);
-		INT/*    */= prim(_Number.int_D);
-		FLOAT/*  */= prim(_Number.float_D);
-		LONG/*   */= prim(_Number.long_D);
-		DOUBLE/* */= prim(_Number.double_D);
-
-		OBJECT = new ExtendedType(ACC_PUBLIC, _Object.name, null, null, null);
-
-		COLLECTION/**/= intf(_Collection.name, _Iterable.name);
-		LIST/*      */= intf(_List.name, _Collection.name, _Iterable.name);
-		MAP/*       */= intf(_Map.name);
-		SET/*       */= intf(_Set.name, _Collection.name, _Iterable.name);
-
-		ENUM_SET = type(_EnumSet.name, _Set.abstractIN, _Set.name,
-				_Collection.name, _Iterable.name);
-
-		ENUM_MAP = type(_EnumSet.name, _Map.abstractIN, _Map.name);
-
-		SYSTEM_RESOURCES = Pattern
-				.compile("(java/|javax/|sun/|com/sun/|com/oracle/)");
 	}
 
 	static ExtendedType basicOrNull(String name) {
@@ -192,7 +137,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 				return cached;
 			}
 
-			if (cached == null && name.startsWith("[")) {
+			if ((cached == null) && name.startsWith("[")) {
 				current.visited(cached = prim(name));
 				return cached;
 			}
@@ -210,24 +155,20 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 							ClassReader cr = new ClassReader(is);
 
 							ShallowVisitor cv = new ShallowVisitor();
-							cr.accept(cv, ClassReader.SKIP_CODE
-									| ClassReader.SKIP_DEBUG);
+							cr.accept(cv, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
 
 							rv = cv.info;
 						} else {
 							try {
-								Class<?> rt = Class.forName(name.replace("/",
-										"."));
+								Class<?> rt = Class.forName(name.replace("/", "."));
 								String sn = null;
 
 								if (!rt.isInterface()) {
 									Class<?> p = rt.getSuperclass();
-									sn = p == null ? null : p.getName()
-											.replace('.', '/');
+									sn = p == null ? null : p.getName().replace('.', '/');
 								}
 
-								rv = new ExtendedType(rt.getModifiers(), name,
-										sn, null, toStr(rt.getInterfaces()));
+								rv = new ExtendedType(rt.getModifiers(), name, sn, null, toStr(rt.getInterfaces()));
 							} catch (ClassNotFoundException ex) {
 								throw new RuntimeException(ex);
 							}
@@ -242,8 +183,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 					ClassReader cr = new ClassReader(is);
 
 					ShallowVisitor cv = new ShallowVisitor();
-					cr.accept(cv, ClassReader.SKIP_CODE
-							| ClassReader.SKIP_DEBUG);
+					cr.accept(cv, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
 
 					rv = cv.info;
 
@@ -254,8 +194,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 			current.visited(rv);
 			if (deep) {
-				rv.parent = (rv == OBJECT || rv.superName == null) ? null
-						: forInternalName(rv.superName, deep);
+				rv.parent = ((rv == OBJECT) || (rv.superName == null)) ? null : forInternalName(rv.superName, deep);
 			}
 
 			return rv;
@@ -277,8 +216,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	public static ExtendedType[] forRuntime(Class<?>[] types) {
-		ExtendedType[] rv = types == null ? null
-				: new ExtendedType[types.length];
+		ExtendedType[] rv = types == null ? null : new ExtendedType[types.length];
 
 		if (rv != null) {
 			for (int i = 0; i < rv.length; i++) {
@@ -300,8 +238,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	private static ExtendedType intf(String name, String... intf) {
-		return new ExtendedType(ACC_PUBLIC | ACC_INTERFACE, name, name, null,
-				intf);
+		return new ExtendedType(ACC_PUBLIC | ACC_INTERFACE, name, name, null, intf);
 	}
 
 	public static boolean isSystemResource(String name) {
@@ -339,7 +276,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	private static String[] toStr(Class<?>[] interfaces) {
-		if (interfaces == null || interfaces.length == 0) {
+		if ((interfaces == null) || (interfaces.length == 0)) {
 			return EMPTY;
 		}
 		String[] rv = new String[interfaces.length];
@@ -353,6 +290,62 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	private static ExtendedType type(String name, String parent, String... intf) {
 		return new ExtendedType(ACC_PUBLIC, name, parent, null, intf);
+	}
+
+	static final Class<?>[] PM = { boolean.class, byte.class, char.class, short.class, int.class, float.class, double.class };
+	static String[] EMPTY = new String[0];
+	static final ExtendedType OBJECT;
+	static final ExtendedType BOOLEAN;
+	static final ExtendedType BYTE;
+
+	static final ExtendedType SHORT;
+
+	static final ExtendedType CHAR;
+
+	static final ExtendedType INT;
+
+	static final ExtendedType FLOAT;
+
+	static final ExtendedType LONG;
+
+	static final ExtendedType DOUBLE;
+
+	static final ExtendedType COLLECTION;
+
+	static final ExtendedType LIST;
+
+	static final ExtendedType SET;
+
+	static final ExtendedType MAP;
+
+	static final ExtendedType ENUM_SET;
+
+	static final ExtendedType ENUM_MAP;
+
+	static final Pattern SYSTEM_RESOURCES;
+
+	static {
+		BOOLEAN/**/= prim(_Number.boolean_D);
+		CHAR/*   */= prim(_Number.char_D);
+		BYTE/*   */= prim(_Number.byte_D);
+		SHORT/*  */= prim(_Number.short_D);
+		INT/*    */= prim(_Number.int_D);
+		FLOAT/*  */= prim(_Number.float_D);
+		LONG/*   */= prim(_Number.long_D);
+		DOUBLE/* */= prim(_Number.double_D);
+
+		OBJECT = new ExtendedType(ACC_PUBLIC, _Object.name, null, null, null);
+
+		COLLECTION/**/= intf(_Collection.name, _Iterable.name);
+		LIST/*      */= intf(_List.name, _Collection.name, _Iterable.name);
+		MAP/*       */= intf(_Map.name);
+		SET/*       */= intf(_Set.name, _Collection.name, _Iterable.name);
+
+		ENUM_SET = type(_EnumSet.name, _Set.abstractIN, _Set.name, _Collection.name, _Iterable.name);
+
+		ENUM_MAP = type(_EnumSet.name, _Map.abstractIN, _Map.name);
+
+		SYSTEM_RESOURCES = Pattern.compile("(java/|javax/|sun/|com/sun/|com/oracle/)");
 	}
 
 	public long access;
@@ -369,25 +362,23 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	ExtendedType parent;
 
-	public ExtendedType(int access, String name, String superName,
-			String signature, String[] interfaces) {
+	public ExtendedType(int access, String name, String superName, String signature, String[] interfaces) {
 		super();
 		this.access = access;
 		this.name = name.intern();
-		this.desc = name.charAt(0) == '[' ? name : ("L" + name + ";").intern();
+		desc = name.charAt(0) == '[' ? name : ("L" + name + ";").intern();
 		this.superName = superName == null ? null : superName.intern();
 		this.signature = signature;
-		this.interfaces = interfaces == null || interfaces.length == 0 ? EMPTY
-				: interfaces;
+		this.interfaces = (interfaces == null) || (interfaces.length == 0) ? EMPTY : interfaces;
 	}
 
 	private ExtendedType(String name) {
-		this.access = ACC_FINAL & ACC_PUBLIC;
+		access = ACC_FINAL & ACC_PUBLIC;
 		this.name = name;
-		this.desc = name;
-		this.superName = null;
-		this.signature = null;
-		this.interfaces = EMPTY;
+		desc = name;
+		superName = null;
+		signature = null;
+		interfaces = EMPTY;
 	}
 
 	public ExtendedType basicComponentType() {
@@ -396,8 +387,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 			String n = name;
 			int len = n.length();
 			boolean obj = n.lastIndexOf(';') > 0;
-			String iN = n.substring(n.lastIndexOf('[') + (obj ? 2 : 1),
-					obj ? len - 1 : len);
+			String iN = n.substring(n.lastIndexOf('[') + (obj ? 2 : 1), obj ? len - 1 : len);
 
 			try (VisitationContext vc = VisitationContext.current()) {
 				return forInternalName(iN, false);
@@ -410,12 +400,9 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	public boolean canReplace(ExtendedType declared) {
 		boolean rv = false;
 		if (isAbstract()) {
-			Log.warn("Invalid replacement declaration. %s is not concrete",
-					this);
+			Log.warn("Invalid replacement declaration. %s is not concrete", this);
 		} else if (!declared.isAssignableFrom(this)) {
-			Log.warn(
-					"Invalid replacement declaration. %s is not in same hierarchy of %s",
-					this, declared);
+			Log.warn("Invalid replacement declaration. %s is not in same hierarchy of %s", this, declared);
 		} else {
 			rv = true;
 		}
@@ -425,11 +412,11 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	@Override
 	public int compareTo(ExtendedType r) {
-		if (this == r) {
+		if ((this == r) || desc.equals(r.desc)) {
 			return 0;
 		}
 
-		if (this.isAssignableFrom(r)) {
+		if (isAssignableFrom(r)) {
 			return 1;
 		}
 
@@ -460,7 +447,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	public boolean declaresFinalField(boolean deep) {
 		boolean rv = (access & ACC_DECL_FINAL) != 0;
 
-		if (!rv && deep && lazyParent() != null) {
+		if (!rv && deep && (lazyParent() != null)) {
 			rv = lazyParent().declaresFinalField(deep);
 
 			if (rv) {
@@ -474,7 +461,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	public boolean declaresPrivateField(boolean deep) {
 		boolean rv = (access & ACC_DECL_PVT) != 0;
 
-		if (!rv && deep && lazyParent() != null) {
+		if (!rv && deep && (lazyParent() != null)) {
 			rv = lazyParent().declaresPrivateField(deep);
 
 			if (rv) {
@@ -487,18 +474,23 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (obj == null)
+		}
+		if (obj == null) {
 			return false;
-		if (getClass() != obj.getClass())
+		}
+		if (getClass() != obj.getClass()) {
 			return false;
+		}
 		ExtendedType other = (ExtendedType) obj;
 		if (desc == null) {
-			if (other.desc != null)
+			if (other.desc != null) {
 				return false;
-		} else if (!desc.equals(other.desc))
+			}
+		} else if (!desc.equals(other.desc)) {
 			return false;
+		}
 		return true;
 	}
 
@@ -539,12 +531,12 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((desc == null) ? 0 : desc.hashCode());
+		result = (prime * result) + ((desc == null) ? 0 : desc.hashCode());
 		return result;
 	}
 
 	public boolean isA(ExtendedType upper) {
-		if (this == upper || this.name.equals(upper.name)) {
+		if ((this == upper) || name.equals(upper.name)) {
 			return true;
 		}
 
@@ -553,7 +545,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 		do {
 			if (upper.isInterface()) {
-				if (currIfaces != null && currIfaces.length > 0) {
+				if ((currIfaces != null) && (currIfaces.length > 0)) {
 					if (contains(currIfaces, upper.name)) {
 						return true;
 					}
@@ -604,7 +596,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	public boolean isInSameNamespace(ExtendedType other) {
-		if (other == this || other.name.equals(this.name)) {
+		if ((other == this) || other.name.equals(name)) {
 			return true;
 		}
 
@@ -620,7 +612,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	public boolean isNonStaticInnerClass() {
-		return (access & ACC_INNER) != 0 && (access & ACC_STATIC) == 0;
+		return ((access & ACC_INNER) != 0) && ((access & ACC_STATIC) == 0);
 	}
 
 	public boolean isPrimitive() {
@@ -640,13 +632,13 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	public ExtendedType lazyParent() {
-		if (this == OBJECT || this.isInterface()) {
+		if ((this == OBJECT) || isInterface()) {
 			return null;
 		}
 
 		ExtendedType p = parent;
 
-		if (p == null && p != OBJECT && superName != null) {
+		if ((p == null) && (p != OBJECT) && (superName != null)) {
 			parent = p = forInternalName(superName, false);
 		}
 
@@ -692,8 +684,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 				} else {
 					javaName = type().getClassName();
 				}
-				rv = Class.forName(javaName, false, Thread.currentThread()
-						.getContextClassLoader());
+				rv = Class.forName(javaName, false, Thread.currentThread().getContextClassLoader());
 			} catch (ClassNotFoundException e) {
 				rv = Utils.rethrow(e);
 			}
@@ -703,7 +694,7 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	public String simpleName() {
 		int ix = name.lastIndexOf('/');
-		return ix > 0 && ix < name.length() ? name.substring(ix + 1) : name;
+		return (ix > 0) && (ix < name.length()) ? name.substring(ix + 1) : name;
 	}
 
 	@Override
@@ -712,14 +703,14 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	}
 
 	public Type type() {
-		Type rv = this.type;
+		Type rv = type;
 		return rv == null ? rv = type = forName(name) : rv;
 	}
 
 	private boolean walkInterfaces(ExtendedType curr, String name) {
 		String[] intf = curr.interfaces;
 
-		if (intf != null && intf.length > 0) {
+		if ((intf != null) && (intf.length > 0)) {
 			for (String iface : intf) {
 				ExtendedType et = ExtendedType.forInternalName(iface, false);
 				if (et.name.equals(name)) {

@@ -64,9 +64,9 @@ public final class Hierarchy implements Comparator<Class<?>> {
 
 	public Hierarchy(Class<?> superType, Class<?>[] types, boolean complete) {
 		this.superType = ExtendedType.forRuntime(superType);
-		if (types != null) {
-			Arrays.sort(types, this);
-		}
+		// if (types != null) {
+		// Arrays.sort(types, this);
+		// }
 		this.types = (types == null) || (types.length == 0) ? null : ExtendedType.forRuntime(types);
 		this.complete = complete;
 	}
@@ -198,11 +198,14 @@ public final class Hierarchy implements Comparator<Class<?>> {
 		ExtendedType[] types = this.types;
 
 		return ((types == null) || (types.length != 1)) ? //
-		Optional.empty()
+				Optional.empty()
 				: Optional.of(types[0].runtimeType());
 	}
 
 	public Class<?>[] runtimeTypes() {
+		if (!sorted) {
+			sort();
+		}
 		Class<?>[] rv;
 
 		if ((types == null) || (types.length == 0)) {
@@ -214,23 +217,27 @@ public final class Hierarchy implements Comparator<Class<?>> {
 				rv[i] = types[i].runtimeType();
 			}
 
-			Arrays.sort(rv, this);
+			// Arrays.sort(rv, this);
 		}
 
 		return rv;
 	}
 
 	private void sort() {
-		Class<?>[] rts = runtimeTypes();
+		// Class<?>[] rts = runtimeTypes();
+		//
+		// if (rts != null) {
+		// ExtendedType[] types = new ExtendedType[rts.length];
+		//
+		// for (int i = 0; i < types.length; i++) {
+		// types[i] = ExtendedType.forRuntime(rts[i]);
+		// }
+		//
+		// this.types = types;
+		// }
 
-		if (rts != null) {
-			ExtendedType[] types = new ExtendedType[rts.length];
-
-			for (int i = 0; i < types.length; i++) {
-				types[i] = ExtendedType.forRuntime(rts[i]);
-			}
-
-			this.types = types;
+		if (types != null) {
+			Arrays.sort(types);
 		}
 		sorted = true;
 	}
