@@ -47,10 +47,20 @@ public final class Genesis {
 			ValidMapping p = e.getValue();
 
 			Class<?> type = p.type;
+
+			GraphSerializer gs = SerializerFactory.lookup(type);
+
+			if (gs == null) {
+				gs = SerializerFactory.compressing(type);
+			}
+
+			if (gs != null) {
+				continue;
+			}
+
 			Object overlaid = p.serializer;
 
 			if (overlaid != null) {
-				GraphSerializer gs;
 				boolean tryReify = !p.skipReify && !p.isOpaqueGraph && !(overlaid instanceof SingletonSerializer);
 
 				if (overlaid instanceof String) {

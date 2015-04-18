@@ -140,26 +140,34 @@ public class TestMapReification extends AbstractRoundTripTests {
 		Shape ks = Shape.stateless(ObjectShape.MAP);
 		Shape vs = Shape.stateless(ObjectShape.MAP);
 
-		for (Class<? extends Map<?, ?>> mapType : mapTypes) {
+		GraphSerializer old = SerializerFactory.lookup(BigInteger.class);
+		Assert.assertNotNull(old);
+		try {
+			// With Precompiled Reification we must hack to keep this test.
+			SerializerFactory.register(BigInteger.class, new BigIntegerSerializer());
+			for (Class<? extends Map<?, ?>> mapType : mapTypes) {
 
-			for (boolean x : ops) {
-				for (boolean y : ops) {
-					for (boolean z : ops) {
-						for (boolean w : ops) {
+				for (boolean x : ops) {
+					for (boolean y : ops) {
+						for (boolean z : ops) {
+							for (boolean w : ops) {
 
-							GraphSerializer left = SimpleMSOptmizer.rawOptimized(mapType, String.class, ks.with(x, y), BigInteger.class, vs.with(z, w));
+								GraphSerializer left = SimpleMSOptmizer.rawOptimized(mapType, String.class, ks.with(x, y), BigInteger.class, vs.with(z, w));
 
-							// Non-reified are embeded for delegation
-							Assert.assertTrue(getStaticField(left, "vs").getClass() == BigIntegerSerializer.class);
+								// Non-reified are embeded for delegation
+								Assert.assertTrue(getStaticField(left, "vs").getClass() == BigIntegerSerializer.class);
 
-							GraphSerializer right = SimpleMSOptmizer.rawOptimized(mapType, BigInteger.class, ks.with(x, y), String.class, vs.with(z, w));
+								GraphSerializer right = SimpleMSOptmizer.rawOptimized(mapType, BigInteger.class, ks.with(x, y), String.class, vs.with(z, w));
 
-							Assert.assertTrue(getStaticField(right, "ks").getClass() == BigIntegerSerializer.class);
+								Assert.assertTrue(getStaticField(right, "ks").getClass() == BigIntegerSerializer.class);
 
+							}
 						}
 					}
 				}
 			}
+		} finally {
+			SerializerFactory.register(BigInteger.class, old);
 		}
 	}
 

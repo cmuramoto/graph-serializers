@@ -10,19 +10,13 @@ import com.nc.gs.io.Source;
 
 public final class GregorianCalendarSerializer extends GraphSerializer {
 
-	static TimeZone tz;
-
-	@Override
-	public Object instantiate(Source src) {
-		long ms = src.readLong();
-		byte tag = src.readByte();
-		GregorianCalendar gc = tag == 0 ? new GregorianCalendar() : new GregorianCalendar(tz(src.readUTF().intern()));
-		gc.setTimeInMillis(ms);
-
-		return gc;
+	static void doTZ(GregorianCalendar gc, Source src, byte tag) {
+		if (tag != 0) {
+			gc.setTimeZone(tz(src.readUTF().intern()));
+		}
 	}
 
-	private TimeZone tz(String id) {
+	static TimeZone tz(String id) {
 		TimeZone zone = tz;
 		if (zone != null && zone.getID().equals(id)) {
 			return zone;
@@ -30,6 +24,19 @@ public final class GregorianCalendarSerializer extends GraphSerializer {
 			tz = zone = TimeZone.getTimeZone(id);
 		}
 		return zone;
+	}
+
+	static TimeZone tz;
+
+	@Override
+	public Object instantiate(Source src) {
+		long ms = src.readLong();
+		byte tag = src.readByte();
+		GregorianCalendar gc = new GregorianCalendar();
+		doTZ(gc, src, tag);
+		gc.setTimeInMillis(ms);
+
+		return gc;
 	}
 
 	@Override

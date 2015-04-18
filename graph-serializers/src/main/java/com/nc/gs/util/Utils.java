@@ -352,20 +352,6 @@ public class Utils {
 		return new Partition<>(c, size);
 	}
 
-	// public static String readString(final ByteBuffer src) {
-	// int len = unpackI(src);
-	// char[] v = new char[len];
-	//
-	// src.asCharBuffer().get(v, 0, len);
-	//
-	// src.position(src.position() + (len << 1));
-	//
-	// String rv = allocateInstance(String.class);
-	// U.putObject(rv, V_OFF, v);
-	//
-	// return rv;
-	// }
-
 	public static Class<?> primitive(char c) {
 		Class<?> rv;
 
@@ -404,6 +390,20 @@ public class Utils {
 
 		return rv;
 	}
+
+	// public static String readString(final ByteBuffer src) {
+	// int len = unpackI(src);
+	// char[] v = new char[len];
+	//
+	// src.asCharBuffer().get(v, 0, len);
+	//
+	// src.position(src.position() + (len << 1));
+	//
+	// String rv = allocateInstance(String.class);
+	// U.putObject(rv, V_OFF, v);
+	//
+	// return rv;
+	// }
 
 	public static Class<?> primitive(String nameOrDesc) {
 		if (nameOrDesc.length() > 1) {
@@ -452,29 +452,33 @@ public class Utils {
 	}
 
 	public static byte[] removeSyntheticModifier(byte[] bc) {
-		try {
-			ClassReader cr = new ClassReader(bc);
+		byte[] rv = bc;
+		if (REMOVE_SYNTHETIC) {
+			try {
+				ClassReader cr = new ClassReader(bc);
 
-			ClassWriter cw = new OfflineClassWriter(0);
+				ClassWriter cw = new OfflineClassWriter(0);
 
-			cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
+				cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
 
-				@Override
-				public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-					super.visit(version, access & ~Opcodes.ACC_SYNTHETIC, name, signature, superName, interfaces);
-				}
+					@Override
+					public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+						super.visit(version, access & ~Opcodes.ACC_SYNTHETIC, name, signature, superName, interfaces);
+					}
 
-				@Override
-				public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-					return super.visitMethod(access & ~Opcodes.ACC_SYNTHETIC, name, desc, signature, exceptions);
-				}
+					@Override
+					public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+						return super.visitMethod(access & ~Opcodes.ACC_SYNTHETIC, name, desc, signature, exceptions);
+					}
 
-			}, 0);
+				}, 0);
 
-			return cw.toByteArray();
-		} catch (Exception e) {
-			return bc;
+				rv = cw.toByteArray();
+			} catch (Exception e) {
+				rv = bc;
+			}
 		}
+		return rv;
 	}
 
 	public static <T> T rethrow(Throwable ex) {
@@ -724,6 +728,8 @@ public class Utils {
 	public static void writeClass(String name, byte[] bc) {
 		writeClass(IO_BASE, name, bc);
 	}
+
+	public static boolean REMOVE_SYNTHETIC;
 
 	public static final sun.misc.Unsafe U;
 

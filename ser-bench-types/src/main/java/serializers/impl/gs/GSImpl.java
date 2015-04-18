@@ -1,7 +1,7 @@
 package serializers.impl.gs;
 
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import serializers.spi.CheckingObjectSerializer;
 
@@ -21,20 +21,35 @@ import domain.gs.Person;
 
 public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 
-	static Sink borrow() {
-		Sink rv = buffers.poll();
+	static class P {
+		Sink sink;
+		Source source;
 
-		if (rv == null) {
-			rv = new Sink(4096);
+		P() {
+			this.sink = new Sink(4096);
+			this.source = new Source(4096);
 		}
 
-		return rv;
-
+		public void clear() {
+			sink.clear();
+			source.clear();
+		}
 	}
 
-	static void restore(Sink bb) {
-		bb.clear();
-		buffers.offer(bb);
+	static P borrow() {
+		// P rv = C;
+		//
+		// if (rv == null) {
+		// rv = buffers.poll();
+		//
+		// if (rv == null) {
+		// rv = new P();
+		// }
+		// }
+		//
+		// return rv;
+
+		return C;
 	}
 
 	public static void writeRoot(Sink dst, Object o) {
@@ -45,6 +60,8 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 		}
 	}
 
+	static P C = new P();
+
 	static {
 		Genesis.bootstrap();
 		gs = SerializerFactory.serializer(MediaContent.class);
@@ -52,7 +69,8 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 
 	static final GraphSerializer gs;
 
-	static ConcurrentLinkedQueue<Sink> buffers = new ConcurrentLinkedQueue<>();
+	// static ConcurrentLinkedQueue<P> buffers = new ConcurrentLinkedQueue<>();
+	static LinkedList<P> buffers = new LinkedList<>();
 
 	public GSImpl() {
 	}
@@ -117,12 +135,11 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 
 	@Override
 	public MediaContent deserialize(byte[] array) throws Exception {
-		Sink bb = borrow();
+		P p = borrow();
 		try (Context c = Context.reading()) {
-			Source src = bb.mirror();
-			return (MediaContent) gs.readRoot(c, src.filledWith(array));
+			return (MediaContent) gs.readRoot(c, p.source.filledWith(array));
 		} finally {
-			restore(bb);
+			restoreSource(p);
 		}
 	}
 
@@ -131,13 +148,35 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 		return "graph-ser";
 	}
 
+	private void restoreSink(P p) {
+		p.sink.clear();
+		// if (C == null) {
+		// C = p;
+		// } else {
+		// buffers.offer(p);
+		// }
+
+		// buffers.offer(p);
+	}
+
+	private void restoreSource(P p) {
+		p.source.clear();
+		// if (C == null) {
+		// C = p;
+		// } else {
+		// buffers.offer(p);
+		// }
+
+		// buffers.offer(p);
+	}
+
 	@Override
 	public byte[] serialize(MediaContent content) throws Exception {
 		byte[] rv;
-		Sink buffer = borrow();
-		writeRoot(buffer, content);
-		rv = buffer.toByteArray();
-		restore(buffer);
+		P p = borrow();
+		writeRoot(p.sink, content);
+		rv = p.sink.toByteArray();
+		restoreSink(p);
 		return rv;
 	}
 }

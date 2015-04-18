@@ -543,14 +543,16 @@ public class Reifier {
 
 		MethodNode readData;
 
-		public Shell(Class<?> pojo, PojoBody b, ClassVisitor cv) throws IOException {
+		public Shell(Class<?> pojo, PojoBody b, ClassVisitor cv, String targetName) throws IOException {
 			super(Opcodes.ASM5, cv);
 			this.pojo = pojo;
 			root = ClassInfo.getInfo(pojo, FieldTrap.DEFAULT, false);
 
 			this.b = b;
 
-			targetName = GenerationStrategy.prefixForSerializer(root.getName()) + _SerializerFactory.genClassSuffix;
+			// targetName = GenerationStrategy.prefixForSerializer(root.getName()) +
+			// _SerializerFactory.genClassSuffix;
+			this.targetName = targetName;
 			targetDesc = "L" + targetName + ";";
 
 			targetSuperName = _GraphSerializer.name;
@@ -635,7 +637,10 @@ public class Reifier {
 		@Override
 		public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
 
-			ser = new ExtendedType(ACC_PUBLIC + ACC_FINAL, targetName, targetSuperName, b.t.signature, interfaces);
+			try (VisitationContext vc = VisitationContext.current()) {
+				ser = new ExtendedType(ACC_PUBLIC + ACC_FINAL, targetName, targetSuperName, b.t.signature, interfaces);
+				vc.visited(ser);
+			}
 
 			super.visit(version, ACC_PUBLIC + ACC_FINAL + ACC_SYNTHETIC, targetName, b.t.signature, targetSuperName, interfaces);
 		}
@@ -732,14 +737,17 @@ public class Reifier {
 	}
 
 	public static GraphSerializer reify(Class<?> pojo, Class<? extends GraphSerializer> ser) throws IOException {
+		ClassInfo root = ClassInfo.getInfo(pojo, FieldTrap.DEFAULT, false);
 
+		String targetName = GenerationStrategy.prefixForSerializer(root.getName()) + _SerializerFactory.genClassSuffix;
+
+		return reify(pojo, ser, targetName);
+	}
+
+	public static GraphSerializer reify(Class<?> pojo, Class<? extends GraphSerializer> ser, String targetName) throws IOException {
 		PojoBody b;
 
 		try (VisitationContext c = VisitationContext.current()) {
-
-			ClassInfo root = ClassInfo.getInfo(pojo, FieldTrap.DEFAULT, false);
-
-			String targetName = GenerationStrategy.prefixForSerializer(root.getName()) + _SerializerFactory.genClassSuffix;
 
 			try {
 				return (GraphSerializer) Class.forName(targetName.replace('/', '.')).newInstance();
@@ -762,7 +770,7 @@ public class Reifier {
 
 				ClassWriter cw = GenerationStrategy.newClassWriter();
 
-				Shell shell = new Shell(pojo, b, cw);
+				Shell shell = new Shell(pojo, b, cw, targetName);
 
 				cr.accept(shell, ClassReader.SKIP_DEBUG);
 
@@ -779,10 +787,11 @@ public class Reifier {
 				try {
 					return (GraphSerializer) Class.forName(targetName.replace('/', '.')).newInstance();
 				} catch (Throwable err) {
-					return Utils.rethrow(err);
+					return Utils.rethrow(e);
 				}
 			}
 		}
+
 	}
 
 	public static GraphSerializer reify(Class<?> pojo, String ser) throws IOException {
@@ -803,7 +812,7 @@ public class Reifier {
 
 				ClassWriter cw = GenerationStrategy.newClassWriter();
 
-				Shell shell = new Shell(pojo, b, cw);
+				Shell shell = new Shell(pojo, b, cw, GenerationStrategy.prefixForSerializer(pojo.getName()) + _SerializerFactory.genClassSuffix);
 
 				cr.accept(shell, ClassReader.SKIP_DEBUG);
 

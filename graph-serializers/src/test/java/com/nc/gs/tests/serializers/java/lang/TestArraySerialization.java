@@ -5,8 +5,6 @@ import java.util.Arrays;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.nc.gs.core.SerializerFactory;
-import com.nc.gs.serializers.java.lang.StringSerializer;
 import com.nc.gs.tests.AbstractRoundTripTests;
 
 public class TestArraySerialization extends AbstractRoundTripTests {
@@ -21,7 +19,7 @@ public class TestArraySerialization extends AbstractRoundTripTests {
 
 	@Test
 	public void run() {
-		SerializerFactory.register(String.class, new StringSerializer());
+		// SerializerFactory.register(String.class, new StringSerializer());
 
 		Color R = Color.R;
 		Color G = Color.G;

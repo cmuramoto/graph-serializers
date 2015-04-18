@@ -23,8 +23,6 @@ import java.nio.IntBuffer;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.nc.gs.io.Sink;
-
 @SuppressWarnings("restriction")
 public final class Bits {
 
@@ -196,32 +194,32 @@ public final class Bits {
 		return U.reallocateMemory(base, newLim);
 	}
 
-	public static void writeBitMask(Sink dst, boolean[] o) {
-		int len = o.length;
-		int loops = len >>> 6;
-		int r = len & 63;
-
-		dst.writeVarInt(loops + (r > 0 ? 1 : 0));
-
-		int ix = 0;
-		long fl;
-
-		for (int i = 0; i < loops; i++) {
-			fl = 0L;
-			for (int j = 0; i < 64; j++) {
-				fl |= (o[ix++] ? 1L : 0L) << j;
-			}
-			dst.writeLong(fl);
-		}
-
-		if (r > 0) {
-			fl = 0L;
-			for (int i = 0; i < r; i++) {
-				fl |= (o[ix++] ? 1L : 0L) << i;
-			}
-			dst.writeLong(fl);
-		}
-	}
+	// public static void writeBitMask(Sink dst, boolean[] o) {
+	// int len = o.length;
+	// int loops = len >>> 6;
+	// int r = len & 63;
+	//
+	// dst.writeVarInt(loops + (r > 0 ? 1 : 0));
+	//
+	// int ix = 0;
+	// long fl;
+	//
+	// for (int i = 0; i < loops; i++) {
+	// fl = 0L;
+	// for (int j = 0; i < 64; j++) {
+	// fl |= (o[ix++] ? 1L : 0L) << j;
+	// }
+	// dst.writeLong(fl);
+	// }
+	//
+	// if (r > 0) {
+	// fl = 0L;
+	// for (int i = 0; i < r; i++) {
+	// fl |= (o[ix++] ? 1L : 0L) << i;
+	// }
+	// dst.writeLong(fl);
+	// }
+	// }
 
 	static final long PRIMES;
 
