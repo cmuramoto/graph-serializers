@@ -249,5 +249,8 @@ The annotations aren't realy necessary, however to make the benchmark more apple
 [ser]: https://cloud.githubusercontent.com/assets/7014591/5587308/06088ee6-90ce-11e4-9a3d-9c446fb0933e.png
 [des]: https://cloud.githubusercontent.com/assets/7014591/5587302/05e9a9d6-90ce-11e4-8dce-69bbd5d171a6.png
 [desall]: https://cloud.githubusercontent.com/assets/7014591/5587303/05eb2d6a-90ce-11e4-842f-d185b27dc0bf.png
-[desall-stringopt]: https://cloud.githubusercontent.com/assets/7014591/5587301/05e8d5f6-90ce-11e4-8642-16ffec736894.png
-[des-stringopt]: https://cloud.githubusercontent.com/assets/7014591/5587304/05ecb8ba-90ce-11e4-9cc0-7e74cb5aa9af.png
+[desall-stringopt]: https://cloud.githubusercontent.com/assets/7014591/7216779/971b6936-e5e1-11e4-86c2-44bddf8ab568.png
+[des-stringopt]: https://cloud.githubusercontent.com/assets/7014591/7216780/971e31ca-e5e1-11e4-8e5a-0099cd45485d.png
+
+[desall-stringopt-clq]: https://cloud.githubusercontent.com/assets/7014591/5587301/05e8d5f6-90ce-11e4-8642-16ffec736894.png
+[des-stringopt-clq]: https://cloud.githubusercontent.com/assets/7014591/5587304/05ecb8ba-90ce-11e4-9cc0-7e74cb5aa9af.png
