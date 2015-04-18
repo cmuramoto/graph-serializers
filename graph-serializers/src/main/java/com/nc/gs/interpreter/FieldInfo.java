@@ -538,8 +538,8 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			final ShapeVisitor shapeVisitor = meta.shapeVisitor;
 
 			if (shapeVisitor != null) {
-				s.k |= shapeVisitor.nullable ? ObjectShape.NULLABLE : 0;
-				s.k |= shapeVisitor.onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0;
+				s.setNullable(shapeVisitor.nullable);
+				s.setDisregardRefs(shapeVisitor.onlyPayload);
 			}
 
 			if ((types != null) && (types.length > 0)) {
