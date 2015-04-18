@@ -25,7 +25,9 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	public static Hierarchy from(Class<?>[] types) {
 		Hierarchy h = Hierarchy.unknown();
 
+		// In this case, we are already working at runtime. So sort it.
 		Arrays.sort(types, h);
+		h.sorted = true;
 
 		Type[] sers = new Type[types.length];
 		ExtendedType[] kt = new ExtendedType[types.length];
@@ -67,7 +69,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 		// if (types != null) {
 		// Arrays.sort(types, this);
 		// }
-		this.types = (types == null) || (types.length == 0) ? null : ExtendedType.forRuntime(types);
+		this.types = types == null || types.length == 0 ? null : ExtendedType.forRuntime(types);
 		this.complete = complete;
 	}
 
@@ -78,11 +80,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	}
 
 	public ExtendedType at(int ix) {
-		if (!sorted) {
-			sort();
-		}
-
-		return types[ix];
+		return types()[ix];
 	}
 
 	public Comparator<Class<?>> cmp() {
@@ -96,7 +94,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	}
 
 	public boolean declaresTypes() {
-		return (types != null) && (types.length > 0);
+		return types != null && types.length > 0;
 	}
 
 	@Override
@@ -133,12 +131,14 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	}
 
 	public boolean isPolymorphic() {
-		return !complete || ((types != null) && (types.length > 1));
+		return !complete || types != null && types.length > 1;
 	}
 
 	public Hierarchy markSerializers() {
 		if (declaresTypes()) {
 			long reified = 0l;
+
+			ExtendedType[] types = types();
 
 			Class<?>[] rts = new Class<?>[types.length];
 
@@ -172,7 +172,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 
 		ExtendedType[] types = this.types;
 
-		if ((types == null) || (types.length == 0)) {
+		if (types == null || types.length == 0) {
 
 			mv.visitInsn(ACONST_NULL);
 
@@ -197,18 +197,17 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	public Optional<Class<?>> opUniqueConcrete() {
 		ExtendedType[] types = this.types;
 
-		return ((types == null) || (types.length != 1)) ? //
-				Optional.empty()
+		return types == null || types.length != 1 ? //
+		Optional.empty()
 				: Optional.of(types[0].runtimeType());
 	}
 
 	public Class<?>[] runtimeTypes() {
-		if (!sorted) {
-			sort();
-		}
 		Class<?>[] rv;
 
-		if ((types == null) || (types.length == 0)) {
+		ExtendedType[] types = types();
+
+		if (types == null || types.length == 0) {
 			rv = null;
 		} else {
 			rv = new Class<?>[types.length];
@@ -216,8 +215,6 @@ public final class Hierarchy implements Comparator<Class<?>> {
 			for (int i = 0; i < rv.length; i++) {
 				rv[i] = types[i].runtimeType();
 			}
-
-			// Arrays.sort(rv, this);
 		}
 
 		return rv;
@@ -255,6 +252,6 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	}
 
 	public Class<?> uniqueConcrete() {
-		return opUniqueConcrete().orElseThrow(() -> new IllegalStateException(("N-Types: " + types) == null ? "" : Arrays.toString(types)));
+		return opUniqueConcrete().orElseThrow(() -> new IllegalStateException("N-Types: " + types == null ? "" : Arrays.toString(types)));
 	}
 }

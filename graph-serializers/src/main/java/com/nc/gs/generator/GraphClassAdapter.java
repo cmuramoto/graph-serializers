@@ -13,12 +13,11 @@ import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.POP;
 import static org.objectweb.asm.Opcodes.PUTSTATIC;
 import static org.objectweb.asm.Opcodes.RETURN;
-import gnu.trove.map.hash.TCustomHashMap;
-import gnu.trove.map.hash.THashMap;
-import gnu.trove.set.hash.THashSet;
-import gnu.trove.strategy.IdentityHashingStrategy;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -88,10 +87,10 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	Map<ICKey, ICVal> ics;
 	Set<String> icOverloads;
 
-	TCustomHashMap<FieldInfo, SpecialField> fiToS;
+	IdentityHashMap<FieldInfo, SpecialField> fiToS;
 	List<SpecialField> sfCache;
 
-	Map<Type, CachedField> cachedFields = new THashMap<>();
+	Map<Type, CachedField> cachedFields = new HashMap<>();
 	List<FieldInfo> prims;
 	List<FieldInfo> nullable;
 
@@ -153,7 +152,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	}
 
 	private void cacheEnumConstants(MethodVisitor mv) {
-		Map<String, Type> map = new THashMap<>();
+		Map<String, Type> map = new HashMap<>();
 
 		List<FieldInfo> nullable = this.nullable;
 		List<FieldInfo> nonNullable = this.nonNullable;
@@ -297,11 +296,11 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 		}
 	}
 
-	TCustomHashMap<FieldInfo, SpecialField> fieldToSpecial() {
-		TCustomHashMap<FieldInfo, SpecialField> rv = fiToS;
+	IdentityHashMap<FieldInfo, SpecialField> fieldToSpecial() {
+		IdentityHashMap<FieldInfo, SpecialField> rv = fiToS;
 
 		if (rv == null) {
-			rv = fiToS = new TCustomHashMap<>(IdentityHashingStrategy.INSTANCE);
+			rv = fiToS = new IdentityHashMap<>();
 		}
 
 		return rv;
@@ -346,7 +345,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	protected Map<ICKey, ICVal> lazyGetICMap() {
 		Map<ICKey, ICVal> rv = ics;
 		if (rv == null) {
-			rv = ics = new THashMap<>(4);
+			rv = ics = new HashMap<>(4);
 		}
 
 		return rv;
@@ -355,7 +354,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	protected Set<String> lazyGetOverloads() {
 		Set<String> rv = icOverloads;
 		if (rv == null) {
-			rv = icOverloads = new THashSet<>(4);
+			rv = icOverloads = new HashSet<>(4);
 		}
 		return rv;
 	}

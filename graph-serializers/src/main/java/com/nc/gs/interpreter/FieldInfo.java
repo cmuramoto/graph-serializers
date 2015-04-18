@@ -15,11 +15,11 @@ import static symbols.io.abstraction._Tags.FieldInfo.ACC_NON_SERIALIZED;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_ONLY_DATA;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_SET;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_SET_CMP;
-import gnu.trove.set.hash.THashSet;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -147,7 +147,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 					Set<ExtendedType> gens = this.gens;
 
 					if (gens == null) {
-						this.gens = gens = new THashSet<>();
+						this.gens = gens = new HashSet<>();
 					}
 
 					if (gens != null) {
@@ -268,10 +268,6 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			return null;
 		}
 
-		public Set<ExtendedType> getHierarchy() {
-			return hierarchy;
-		}
-
 		public boolean isNullable() {
 			return nullable;
 		}
@@ -299,7 +295,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				// have only one, there's
 				// no need for branching.
 				if (hierarchy == null) {
-					hierarchy = new THashSet<>(2);
+					hierarchy = new HashSet<>(2);
 				}
 				final ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
 
@@ -334,7 +330,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 		ExtendedType[] rv;
 
-		final Set<ExtendedType> types = new THashSet<>(2);
+		final Set<ExtendedType> types = new HashSet<>(2);
 
 		check: {
 			if (s != null) {

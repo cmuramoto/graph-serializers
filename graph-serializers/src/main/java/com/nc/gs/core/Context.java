@@ -4,8 +4,6 @@ import static symbols.io.abstraction._Tags.Serializer.ID_BASE;
 import static symbols.io.abstraction._Tags.Serializer.NULL;
 import static symbols.io.abstraction._Tags.Serializer.REF;
 import static symbols.io.abstraction._Tags.Serializer.TYPE_ID;
-import gnu.trove.map.custom_hash.TObjectIntCustomHashMap;
-import gnu.trove.strategy.IdentityHashingStrategy;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -20,6 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.nc.gs.ds.ClassTable;
+import com.nc.gs.ds.IdentityMap;
 import com.nc.gs.io.In;
 import com.nc.gs.io.Out;
 import com.nc.gs.io.Sink;
@@ -335,7 +334,7 @@ public final class Context implements AutoCloseable {
 
 	Instantiator[] instCache = new Instantiator[4];
 
-	TObjectIntCustomHashMap<Object> m = new TObjectIntCustomHashMap<>(IdentityHashingStrategy.INSTANCE, 256, .75f, -1);
+	IdentityMap<Object> m = new IdentityMap<>(256, .75f, -1);
 
 	Object[] refs = new Object[256];
 

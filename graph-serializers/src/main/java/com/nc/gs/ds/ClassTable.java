@@ -1,8 +1,6 @@
 package com.nc.gs.ds;
 
 import static com.nc.gs.util.Utils.U;
-import gnu.trove.map.custom_hash.TObjectIntCustomHashMap;
-import gnu.trove.strategy.IdentityHashingStrategy;
 
 import java.util.Arrays;
 
@@ -16,15 +14,14 @@ public abstract class ClassTable {
 
 	static final class AutoMap extends ClassTable {
 
-		final TObjectIntCustomHashMap<Class<?>> map;
+		final IdentityMap<Class<?>> map;
 
 		Class<?>[] slots;
 
 		int max;
 
 		public AutoMap(Pair<int[], Class<?>[]> mapped) {
-			TObjectIntCustomHashMap<Class<?>> map = new TObjectIntCustomHashMap<>(
-					IdentityHashingStrategy.INSTANCE, 0, .75f, -1);
+			IdentityMap<Class<?>> map = new IdentityMap<>(-1);
 			Class<?>[] types;
 
 			int max = 0;
@@ -81,13 +78,12 @@ public abstract class ClassTable {
 
 	static final class FrozenMap extends ClassTable {
 
-		final TObjectIntCustomHashMap<Class<?>> map;
+		final IdentityMap<Class<?>> map;
 
 		Class<?>[] slots;
 
 		public FrozenMap(Pair<int[], Class<?>[]> mapped) {
-			TObjectIntCustomHashMap<Class<?>> map = new TObjectIntCustomHashMap<>(
-					IdentityHashingStrategy.INSTANCE, 0, .75f, 0);
+			IdentityMap<Class<?>> map = new IdentityMap<>(0);
 			Class<?>[] types;
 			if (mapped != null) {
 				int[] tIds = mapped.k;
@@ -100,7 +96,7 @@ public abstract class ClassTable {
 				types = new Class<?>[1];
 			}
 
-			map.compact();
+			// map.compact();
 
 			slots = types;
 			this.map = map;
@@ -158,8 +154,7 @@ public abstract class ClassTable {
 				U.putInt(B + (ix << 2), tId);
 			}
 
-			Log.info("{Heap Slots: %05d, Native Slots: %d, P: %d}",
-					table.length, M, P);
+			Log.info("{Heap Slots: %05d, Native Slots: %d, P: %d}", table.length, M, P);
 		}
 
 		@Override
@@ -169,9 +164,9 @@ public abstract class ClassTable {
 			int tId = ix < M ? U.getInt(B + (ix << 2)) : 0;
 
 			/**
-			 * This will check for a hash collision in the case compatible mode
-			 * is enabled. If not, we must not check for compatibility because
-			 * the context will not write types properly.
+			 * This will check for a hash collision in the case compatible mode is enabled. If not,
+			 * we must not check for compatibility because the context will not write types
+			 * properly.
 			 */
 			if (COMPATIBLE && tId != 0 && S[tId] != c) {
 				tId = 0;

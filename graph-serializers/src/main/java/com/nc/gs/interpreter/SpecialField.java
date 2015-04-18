@@ -16,8 +16,8 @@ import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.POP;
 import static org.objectweb.asm.Opcodes.RETURN;
-import gnu.trove.map.hash.TCustomHashMap;
-import gnu.trove.strategy.IdentityHashingStrategy;
+
+import java.util.IdentityHashMap;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
@@ -37,7 +37,7 @@ public abstract class SpecialField {
 	String gsDesc;
 
 	String name;
-	TCustomHashMap<FieldInfo, String[]> slots;
+	IdentityHashMap<FieldInfo, String[]> slots;
 
 	public final void emitDeclaration(ClassVisitor cv) {
 		FieldVisitor fv = cv.visitField(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, name, gsDesc, null, null);
@@ -177,7 +177,7 @@ public abstract class SpecialField {
 		mv.visitEnd();
 
 		if (slots == null) {
-			slots = new TCustomHashMap<>(IdentityHashingStrategy.INSTANCE);
+			slots = new IdentityHashMap<>();
 		}
 
 		slots.put(fi, sl);

@@ -10,35 +10,33 @@ import com.nc.gs.meta.Optimize;
 
 public class TheType {
 
-	static class Foo {
-
-	}
-	
-	static class Roo {
-
-	}
-
 	static class Bar extends Foo {
 
 	}
 
+	static class Baz extends Foo {
+
+	}
+
 	static class Car extends Roo {
-		
-	}
-
-	static class Baz extends Bar {
 
 	}
 
-	@Optimize
-	Map<@NotNull Long, @LeafNode @OnlyPayload Car> mapA; 
+	static class Foo {
+
+	}
+
+	static class Roo {
+
+	}
 
 	@Optimize
-	Map<@NotNull String,@OnlyPayload @NotNull @Hierarchy(complete = true, types = { Foo.class,
-			Bar.class }) Bar> mapB;
-	
+	Map<@NotNull Long, @LeafNode @OnlyPayload Car> mapA;
+
 	@Optimize
-	Map<@NotNull String,@OnlyPayload @NotNull @Hierarchy(complete = true, types = { Bar.class,
-			Baz.class }) Foo> mapC;
+	Map<@NotNull String, @OnlyPayload @NotNull @Hierarchy(complete = true, types = { Foo.class, Bar.class }) Bar> mapB;
+
+	@Optimize
+	Map<@NotNull String, @OnlyPayload @NotNull @Hierarchy(complete = true, types = { Baz.class, Bar.class }) Foo> mapC;
 
 }

@@ -1,8 +1,7 @@
 package com.nc.gs.config;
 
-import gnu.trove.set.hash.THashSet;
-
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.nc.gs.util.Utils;
@@ -63,7 +62,7 @@ public class Mapping implements Comparable<Mapping> {
 	public void addInclude(String text) {
 		Set<String> incs = includes;
 		if (incs == null) {
-			incs = includes = new THashSet<>(2);
+			incs = includes = new HashSet<>(2);
 		}
 		incs.add(text);
 	}

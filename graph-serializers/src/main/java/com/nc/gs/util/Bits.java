@@ -15,7 +15,13 @@ import static sun.misc.Unsafe.ARRAY_LONG_BASE_OFFSET;
 import static sun.misc.Unsafe.ARRAY_LONG_INDEX_SCALE;
 import static sun.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
 import static sun.misc.Unsafe.ARRAY_SHORT_INDEX_SCALE;
-import gnu.trove.map.hash.TLongLongHashMap;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.nc.gs.io.Sink;
 
@@ -60,6 +66,9 @@ public final class Bits {
 			count += length;
 		}
 		System.arraycopy(EMPTY, 0, arr, count, len - count);
+
+		// This should be faster, however it's not! Probably not an intrinsic.
+		// U.setMemory(arr, ARRAY_LONG_BASE_OFFSET, ARRAY_LONG_INDEX_SCALE*len, (byte)0);
 	}
 
 	public static void copyFrom(long base, byte[] src, int off, int len) {
@@ -155,11 +164,32 @@ public final class Bits {
 	}
 
 	public static synchronized void freeMemory(long address) {
-		long mem = ADDR_TO_UNALIGNED == null ? address : ADDR_TO_UNALIGNED.remove(address);
+		Long m = ADDR_TO_UNALIGNED == null ? address : ADDR_TO_UNALIGNED.remove(address);
 
-		mem = mem == -1L ? address : mem;
+		long mem = m == null ? address : m;
 
 		U.freeMemory(mem);
+	}
+
+	public static final int nextPrime(int key) {
+		long b = PRIMES;
+		int low = 0;
+		int high = PLEN;
+
+		while (low <= high) {
+			int mid = (low + high) >>> 1;
+			int midVal = U.getInt(b + (mid << 2));
+
+			if (midVal < key) {
+				low = mid + 1;
+			} else if (midVal > key) {
+				high = mid - 1;
+			} else {
+				return mid;
+			}
+		}
+
+		return U.getInt(b + ((low + 1) << 2));
 	}
 
 	public static long reallocateMemory(long base, long newLim) {
@@ -193,9 +223,49 @@ public final class Bits {
 		}
 	}
 
+	static final long PRIMES;
+
+	static final int PLEN;
+
 	static final long COPY_THRESHOLD = 1024L * 1024L;
 
-	static final Object[] EMPTY = new Object[4096];
+	static final Object[] EMPTY = new Object[1024];
 
-	static final TLongLongHashMap ADDR_TO_UNALIGNED = sun.misc.VM.isDirectMemoryPageAligned() ? new TLongLongHashMap(4, .75f, -1L, -1L) : null;
+	static final Map<Long, Long> ADDR_TO_UNALIGNED;
+
+	static {
+		ADDR_TO_UNALIGNED = sun.misc.VM.isDirectMemoryPageAligned() ? new TreeMap<>() : null;
+
+		try (InputStream is = Bits.class.getClassLoader().getResourceAsStream("primes.bin")) {
+			// available always works in this case
+			int av = is.available();
+
+			assert av > 0 && av % 4 == 0;
+
+			byte[] buff = new byte[av];
+
+			int r = 0;
+			while ((r = is.read(buff, r, buff.length - r)) > 0) {
+				;
+			}
+
+			long m = allocateMemory(av);
+
+			IntBuffer buffer = ByteBuffer.wrap(buff).asIntBuffer();
+
+			r = 0;
+			while (buffer.hasRemaining()) {
+				U.putInt(m + (r << 2), buffer.get());
+				r++;
+			}
+
+			// copyFromByteArray(m, buff, 0, buff.length);
+
+			PRIMES = m;
+			PLEN = (av / 4) - 1;
+		} catch (IOException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+	}
+
 }

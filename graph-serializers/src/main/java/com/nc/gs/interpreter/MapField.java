@@ -21,10 +21,12 @@ public final class MapField extends SpecialField {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		if (this == obj) {
 			return true;
-		if (!super.equals(obj))
+		}
+		if (!super.equals(obj)) {
 			return false;
+		}
 		MapField other = (MapField) obj;
 
 		return ms.equals(other.ms);
@@ -40,6 +42,10 @@ public final class MapField extends SpecialField {
 		mv.visitTypeInsn(CHECKCAST, ms.optName);
 
 		mv.visitFieldInsn(PUTSTATIC, owner, name, gsDesc);
+	}
+
+	public MapShape shape() {
+		return ms;
 	}
 
 }

@@ -1,12 +1,10 @@
 package com.nc.gs.interpreter;
 
-import gnu.trove.map.hash.THashMap;
+import java.util.HashMap;
 
 import com.nc.gs.util.Pair;
 
 public final class VisitationContext implements AutoCloseable {
-
-	private static ThreadLocal<VisitationContext> CTXS = new ThreadLocal<>();
 
 	public static VisitationContext current() {
 		VisitationContext vc = CTXS.get();
@@ -17,18 +15,20 @@ public final class VisitationContext implements AutoCloseable {
 		}
 
 		if (vc.visited == null) {
-			vc.visited = new THashMap<>();
+			vc.visited = new HashMap<>();
 		}
 
 		if (vc.depth++ == 0) {
-			//Log.info("Creating Visitation Context");
+			// Log.info("Creating Visitation Context");
 		}
 
 		return vc;
 	}
 
+	private static ThreadLocal<VisitationContext> CTXS = new ThreadLocal<>();
+
 	int depth;
-	private THashMap<String, Pair<ExtendedType, ClassInfo>> visited;
+	private HashMap<String, Pair<ExtendedType, ClassInfo>> visited;
 
 	public ExtendedType basic(String v) {
 		ExtendedType rv;
@@ -44,10 +44,10 @@ public final class VisitationContext implements AutoCloseable {
 	public void close() {
 
 		if (--depth <= 0) {
-			THashMap<String, Pair<ExtendedType, ClassInfo>> visited = this.visited;
+			HashMap<String, Pair<ExtendedType, ClassInfo>> visited = this.visited;
 			if (visited != null) {
-//				Log.info("Destroying Visitation Context [cached types: %d]",
-//						visited.size());
+				// Log.info("Destroying Visitation Context [cached types: %d]",
+				// visited.size());
 				visited.clear();
 				visited = this.visited = null;
 			}
