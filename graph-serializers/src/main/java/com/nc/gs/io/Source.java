@@ -21,10 +21,14 @@ import com.nc.gs.util.Utils;
 @SuppressWarnings("restriction")
 public final class Source extends InputStream implements Closeable, DataInput {
 
-	public static Source allocate(InputStream src) {
-		Source in = new Source();
+	@SuppressWarnings("resource")
+	public static Source of(byte[] hb) {
+		return new Source(hb.length).filledWith(hb);
+	}
 
-		return in;
+	@SuppressWarnings("resource")
+	public static Source of(InputStream src) throws IOException {
+		return new Source().filledWith(src);
 	}
 
 	public static Source of(MappedByteBuffer bb) {
@@ -34,6 +38,8 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
 
 	byte[] chunk;
+
+	protected boolean disposable;
 
 	protected long base;
 
@@ -92,11 +98,20 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	@Override
 	public void close() {
+		pos = mark = 0;
 
+		if (disposable) {
+			Bits.freeMemory(base);
+		}
 	}
 
 	public long decodeMask(int max) {
 		return max < 48 ? readVarLong() : readLong();
+	}
+
+	public Source disposable() {
+		disposable = true;
+		return this;
 	}
 
 	public Source filledWith(byte[] hb) {
@@ -179,31 +194,31 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		}
 	}
 
-	private void inflate(byte[] o) {
+	public void inflate(byte[] o) {
 		Bits.copyTo(advance(o.length), o, 0, o.length);
 	}
 
-	private void inflate(char[] o) {
+	public void inflate(char[] o) {
 		Bits.copyTo(advance(o.length << 1), o, 0, o.length);
 	}
 
-	private void inflate(double[] o) {
+	public void inflate(double[] o) {
 		Bits.copyTo(advance(o.length << 3), o, 0, o.length);
 	}
 
-	private void inflate(float[] o) {
+	public void inflate(float[] o) {
 		Bits.copyTo(advance(o.length << 2), o, 0, o.length);
 	}
 
-	private void inflate(int[] o) {
+	public void inflate(int[] o) {
 		Bits.copyTo(advance(o.length << 2), o, 0, o.length);
 	}
 
-	private void inflate(long[] o) {
+	public void inflate(long[] o) {
 		Bits.copyTo(advance(o.length << 3), o, 0, o.length);
 	}
 
-	private void inflate(short[] o) {
+	public void inflate(short[] o) {
 		Bits.copyTo(advance(o.length << 1), o, 0, o.length);
 	}
 
@@ -660,6 +675,11 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		mark = 0;
 	}
 
+	public Source reusable() {
+		disposable = false;
+		return this;
+	}
+
 	@Override
 	public long skip(long n) {
 		long k = lim - pos;
@@ -673,6 +693,6 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	@Override
 	public int skipBytes(int n) throws IOException {
-		return 0;
+		return (int) skip(n);
 	}
 }

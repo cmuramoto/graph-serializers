@@ -6,7 +6,7 @@ import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -23,6 +23,7 @@ import symbols.io.abstraction._SerializerFactory;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.generator.GenerationStrategy;
 import com.nc.gs.generator.Reifier;
+import com.nc.gs.io.Sink;
 import com.nc.gs.serializers.java.lang.compressed.CharacterSerializer;
 import com.nc.gs.serializers.java.lang.compressed.DoubleSerializer;
 import com.nc.gs.serializers.java.lang.compressed.FloatSerializer;
@@ -55,7 +56,6 @@ public class GenPrecompiled {
 	public void run() throws IOException {
 
 		File base = new File("src/main/resources/precompiled");
-		File compBase = new File("src/main/resources/precompiled/compressed");
 
 		Arrays.stream(Utils.IO_BASE.listFiles()).forEach(f -> f.delete());
 
@@ -67,20 +67,6 @@ public class GenPrecompiled {
 		comp.put(Float.class, new FloatSerializer());
 		comp.put(Short.class, new ShortSerializer());
 		comp.put(Character.class, new CharacterSerializer());
-
-		comp.forEach((k, v) -> {
-			String targetName = GenerationStrategy.prefixForSerializer(Type.getInternalName(k)) + "_C" + _SerializerFactory.genClassSuffix;
-			try {
-				Reifier.reify(k, v.getClass(), targetName);
-
-				String srcName = targetName.replace('/', '.') + ".class";
-				String dstName = k.getName() + ".bin";
-				File f = new File(Utils.IO_BASE, srcName);
-				Files.copy(f.toPath(), compBase.toPath().resolve(dstName), StandardCopyOption.REPLACE_EXISTING);
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		});
 
 		Map<Class<?>, GraphSerializer> std = new IdentityHashMap<>();
 		std.put(String.class, new com.nc.gs.serializers.java.lang.StringSerializer());
@@ -98,21 +84,53 @@ public class GenPrecompiled {
 		std.put(GregorianCalendar.class, new com.nc.gs.serializers.java.util.GregorianCalendarSerializer());
 		std.put(Holder.class, new HolderSerializer());
 
-		std.forEach((k, v) -> {
-			String targetName = GenerationStrategy.prefixForSerializer(Type.getInternalName(k)) + _SerializerFactory.genClassSuffix;
+		try (Sink s = new Sink(16 * 1024)) {
 
-			try {
-				Reifier.reify(k, v.getClass(), targetName);
+			s.writeVarInt(comp.size() + std.size());
 
-				String srcName = targetName.replace('/', '.') + ".class";
-				String dstName = k.getName() + ".bin";
-				File f = new File(Utils.IO_BASE, srcName);
-				Files.copy(f.toPath(), base.toPath().resolve(dstName), StandardCopyOption.REPLACE_EXISTING);
+			comp.forEach((k, v) -> {
+				String targetName = GenerationStrategy.prefixForSerializer(Type.getInternalName(k)) + "_C" + _SerializerFactory.genClassSuffix;
+				try {
+					Reifier.reify(k, v.getClass(), targetName);
 
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		});
+					String srcName = targetName.replace('/', '.') + ".class";
+					// String dstName = k.getName() + ".bin";
+					File f = new File(Utils.IO_BASE, srcName);
+					byte[] bytes = Files.readAllBytes(f.toPath());
+					s.writeBoolean(true);
+					s.writeUTF(k.getName());
+					s.writeVarInt(bytes.length);
+					s.writeBytes(bytes);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
 
+			std.forEach((k, v) -> {
+				String targetName = GenerationStrategy.prefixForSerializer(Type.getInternalName(k)) + _SerializerFactory.genClassSuffix;
+
+				try {
+					Reifier.reify(k, v.getClass(), targetName);
+
+					String srcName = targetName.replace('/', '.') + ".class";
+					// String dstName = k.getName() + ".bin";
+					File f = new File(Utils.IO_BASE, srcName);
+					// Files.copy(f.toPath(), base.toPath().resolve(dstName),
+					// StandardCopyOption.REPLACE_EXISTING);
+					byte[] bytes = Files.readAllBytes(f.toPath());
+					s.writeBoolean(false);
+					s.writeUTF(k.getName());
+					s.writeVarInt(bytes.length);
+					s.writeBytes(bytes);
+
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
+
+			byte[] blob = s.toByteArray();
+
+			Files.write(base.toPath().resolve("reified-blob.bin"), blob, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+		}
 	}
 }

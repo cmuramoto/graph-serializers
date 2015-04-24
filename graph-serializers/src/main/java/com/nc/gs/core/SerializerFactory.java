@@ -1,12 +1,10 @@
 package com.nc.gs.core;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOError;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Modifier;
 import java.net.URL;
-import java.nio.file.Files;
 import java.security.CodeSource;
 import java.util.Collection;
 import java.util.IdentityHashMap;
@@ -14,8 +12,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -34,6 +30,7 @@ import com.nc.gs.interpreter.ClassInfo;
 import com.nc.gs.interpreter.MapShape;
 import com.nc.gs.interpreter.Shape;
 import com.nc.gs.interpreter.StreamShape;
+import com.nc.gs.io.Source;
 import com.nc.gs.log.Log;
 import com.nc.gs.serializers.java.lang.ArraySerializer;
 import com.nc.gs.serializers.java.lang.LeafTypeArraySerializer;
@@ -108,8 +105,8 @@ public final class SerializerFactory {
 			Class<?> compType = shape.hasPolymorphicHierarchy() ? null : shape.hierarchy().uniqueConcrete();
 			if ((colType == null) && (compType == null)) {
 				rv = shape.disregardRefs() ? //
-						shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
-								: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
+				shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
+						: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
 			} else {
 				rv = new CollectionSerializer(colType, compType, shape.canBeNull(), shape.disregardRefs());
 			}
@@ -221,91 +218,32 @@ public final class SerializerFactory {
 		return ((type.getClassLoader() != GraphSerializer.class.getClassLoader()) && !Modifier.isPublic(type.getModifiers())) || (lookup(type) instanceof OpaqueSerializer);
 	}
 
-	private static void load(File dir) throws Exception {
-		File[] files = dir.listFiles();
+	private static void loadPrecompiled(URL url) throws IOException, ReflectiveOperationException {
 
-		for (File file : files) {
-			if (file.isDirectory()) {
-				load(file);
-			} else {
-				String name = file.getName().substring(0, file.getName().length() - 4);
-				Class<?> c = Class.forName(name);
+		try (InputStream is = url.openStream(); Source s = Source.of(is).disposable()) {
+			long now = System.currentTimeMillis();
+			int max = s.readVarInt();
 
-				GraphSerializer gs = (GraphSerializer) GraphClassLoader.INSTANCE.load(GraphSerializer.class.getClassLoader(), Files.readAllBytes(file.toPath())).newInstance();
+			for (int i = 0; i < max; i++) {
+				boolean comp = s.readBoolean();
+				Class<?> type = Class.forName(s.readUTF());
+				byte[] rt = new byte[s.readVarInt()];
+				s.inflate(rt);
 
-				if (!gs.getClass().isSynthetic()) {
-					throw new IllegalStateException("Precompiled Serializer must be synthetic");
-				}
-
-				if (file.getParent().endsWith("compressed")) {
-					COMPRESSING.put(c, gs);
-				} else {
-					SERIALIZERS.put(c, gs);
-				}
-			}
-		}
-
-	}
-
-	private static void load(ZipInputStream zip) throws Exception {
-		byte[] chunk = new byte[16 * 1024];
-		ClassLoader cl = GraphClassLoader.class.getClassLoader();
-		while (true) {
-			ZipEntry e = zip.getNextEntry();
-
-			if (e == null) {
-				break;
-			}
-
-			if (e.isDirectory()) {
-				continue;
-			}
-
-			String name = e.getName();
-
-			if (name.contains("precompiled")) {
-				int sz = (int) e.getSize();
-
-				if (sz > chunk.length) {
-					chunk = new byte[sz];
-				}
-
-				int tl = 0;
-				while ((tl = zip.read(chunk, tl, sz - tl)) > 0) {
-					;
-				}
-
-				GraphSerializer gs = (GraphSerializer) GraphClassLoader.INSTANCE.load(cl, chunk).newInstance();
+				GraphSerializer gs = (GraphSerializer) GraphClassLoader.INSTANCE.load(GraphSerializer.class.getClassLoader(), rt).newInstance();
 
 				if (!gs.getClass().isSynthetic()) {
 					throw new IllegalStateException("Precompiled Serializer must be synthetic");
 				}
 
-				Class<?> c = Class.forName(name.substring(name.lastIndexOf('/') + 1, name.length() - 4));
-
-				if (name.contains("compressed")) {
-					COMPRESSING.put(c, gs);
+				if (comp) {
+					COMPRESSING.put(type, gs);
 				} else {
-					SERIALIZERS.put(c, gs);
+					SERIALIZERS.put(type, gs);
 				}
 			}
-		}
-	}
 
-	private static void loadPrecompiled(CodeSource cs) {
-		URL url = cs.getLocation();
-
-		try (InputStream stream = url.openStream()) {
-
-			if (stream instanceof ByteArrayInputStream) {
-
-				load(new File(url.getFile(), "precompiled"));
-
-			} else if (stream instanceof ZipInputStream) {
-				load((ZipInputStream) stream);
-			}
-		} catch (Throwable e) {
-			throw new ExceptionInInitializerError(e);
+			Log.info("Loaded %d precompiled serializers in %dms.", max, System.currentTimeMillis() - now);
 		}
 	}
 
@@ -435,7 +373,11 @@ public final class SerializerFactory {
 		CodeSource cs = GraphSerializer.class.getProtectionDomain().getCodeSource();
 
 		if (cs != null) {
-			loadPrecompiled(cs);
+			try {
+				loadPrecompiled(GraphClassLoader.class.getClassLoader().getResource("precompiled/reified-blob.bin"));
+			} catch (IOException | ReflectiveOperationException e) {
+				throw new ExceptionInInitializerError(e);
+			}
 		}
 	}
 
