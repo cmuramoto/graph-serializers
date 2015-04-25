@@ -110,7 +110,7 @@ public class SimpleCSOptimizer extends ClassVisitor {
 
 		try (VisitationContext vc = VisitationContext.current()) {
 
-			GraphSerializer kgs = SerializerFactory.serializer(type);
+			GraphSerializer kgs = SerializerFactory.serializer(type, shape.isCompressed());
 			Instantiator ctor = colType == null ? null : SerializerFactory.instantiatorOf(colType);
 
 			ExtendedType kt = ExtendedType.forRuntime(type);

@@ -6,9 +6,15 @@ public interface _Tags {
 
 		String CN_TEMPLATE = "CS/of/%s%s{%s}%d%d";
 
+		String CN_TEMPLATE_C = "CS/of/C/%s%s{%s}%d%d";
+
 		String CN_ARRAY_TEMPLATE = "AS/of/%s%d%d";
 
+		String CN_ARRAY_TEMPLATE_C = "AS/of/C/%s%d%d";
+
 		String CN_SET_TEMPLATE = "SS/of/%s{%s}%d%d";
+
+		String CN_SET_TEMPLATE_C = "SS/of/C/%s{%s}%d%d";
 
 		String INSTANCE = "I";
 		String ctr = "ctor";
@@ -54,6 +60,12 @@ public interface _Tags {
 	interface MSOptimizer {
 		String CN_TEMPLATE = "MS/of/%s%s{%s,%s}%d%d%d%d";
 
+		String CN_TEMPLATE_KC = "MS/of/K/%s%s{%s,%s}%d%d%d%d";
+
+		String CN_TEMPLATE_VC = "MS/of/V/%s%s{%s,%s}%d%d%d%d";
+
+		String CN_TEMPLATE_KC_VC = "MS/of/KV/%s%s{%s,%s}%d%d%d%d";
+
 		String INSTANCE = "I";
 		String ctr = "ctor";
 		String kgs = "ks";
@@ -77,9 +89,15 @@ public interface _Tags {
 
 		String CN_TEMPLATE = "MCS/of/%s%s{%s}%d%d";
 
+		String CN_TEMPLATE_C = "MCS/of/C/%s%s{%s}%d%d";
+
 		String CN_ARRAY_TEMPLATE = "MAS/of/{%s}%d%d";
 
+		String CN_ARRAY_TEMPLATE_C = "MAS/of/{%s}%d%d";
+
 		String CN_SET_TEMPLATE = "MSS/of/%s{%s}%d%d";
+
+		String CN_SET_TEMPLATE_C = "MSS/of/C/{%s}%d%d";
 
 		String templateIN = "com/nc/gs/serializers/java/util/opt/CSMulti";
 		String templateINSET = "com/nc/gs/serializers/java/util/opt/SSMulti";
@@ -102,6 +120,12 @@ public interface _Tags {
 
 		String CN_TEMPLATE = "MMS/of/%s%s{%s,%s}%d%d%d%d";
 
+		String CN_TEMPLATE_KC = "MMS/of/K/%s%s{%s,%s}%d%d%d%d";
+
+		String CN_TEMPLATE_VC = "MMS/of/V/%s%s{%s,%s}%d%d%d%d";
+
+		String CN_TEMPLATE_KC_VC = "MMS/of/KV/%s%s{%s,%s}%d%d%d%d";
+
 		String templateIN = "com/nc/gs/serializers/java/util/opt/MSMulti";
 
 		String INSTANCE = "I";
@@ -116,6 +140,7 @@ public interface _Tags {
 		String ICV_W = "ICV_W";
 
 		String TEMPLATE = "com.nc.gs.serializers.java.util.opt.MSMulti";
+
 	}
 
 	public interface ObjectShape {
@@ -143,7 +168,8 @@ public interface _Tags {
 		int REIFIED_SER/*     */= 0x10000000;
 		int ONLY_PAYLOAD/*    */= 0x20000000;
 		int OPTIMIZE/*        */= 0x40000000;
-		int OPAQUE/*          */= 0x80000000;
+		int COMPRESS/*		  */= 0x80000000;
+		long OPAQUE/*          */= 0x100000000L;
 		int UNKONW/*          */= Integer.MIN_VALUE;
 	}
 

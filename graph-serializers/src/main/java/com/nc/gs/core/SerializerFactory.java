@@ -301,6 +301,16 @@ public final class SerializerFactory {
 		return rv;
 	}
 
+	public static GraphSerializer serializer(Class<?> c, boolean tryCompressed) {
+		GraphSerializer rv = tryCompressed ? COMPRESSING.get(c) : SERIALIZERS.get(c);
+		if (rv == null) {
+			Log.warn("No compressing serializer for %s.", c.getName());
+			rv = serializer(c);
+		}
+
+		return rv;
+	}
+
 	@SuppressWarnings({ "all", "restriction" })
 	static GraphSerializer spin(Class<?> c) {
 

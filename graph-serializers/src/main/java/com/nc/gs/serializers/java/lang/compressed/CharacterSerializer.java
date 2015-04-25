@@ -9,12 +9,12 @@ public class CharacterSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return src.readChar();
+		return src.readVarChar();
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeChar((char) o);
+		dst.writeVarChar((char) o);
 	}
 
 }

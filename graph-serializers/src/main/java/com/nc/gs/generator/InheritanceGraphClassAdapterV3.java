@@ -108,7 +108,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					}
 					mv.visitFieldInsn(PUTFIELD, fi.owner().name, fi.name, fi.desc);
 				} else if (fi.isTypeFinalOrLeaf()) {
-					CachedField cf = serializerNameFor(fi.asmType());
+					CachedField cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 					if (cf.isReified) {
 						mv.visitVarInsn(ALOAD, REF_OFFSET);
@@ -183,7 +183,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.putObject, _Unsafe.putObject_D, false);
 				} else if (fi.isTypeFinalOrLeaf()) {
 
-					CachedField cf = serializerNameFor(fi.asmType());
+					CachedField cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 					if (cf.isReified) {
 						mv.visitVarInsn(ALOAD, U_OFFSET);
@@ -307,7 +307,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
 					} else if (fi.isTypeFinalOrLeaf()) {
 
-						CachedField cf = serializerNameFor(fi.asmType());
+						CachedField cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 						if (cf.isReified) {
 							mv.visitVarInsn(ALOAD, REF_OFFSET);
@@ -371,7 +371,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
 					} else if (fi.isTypeFinalOrLeaf()) {
 
-						CachedField cf = serializerNameFor(fi.asmType());
+						CachedField cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 						if (cf.isReified) {
 							mv.visitVarInsn(ALOAD, U_OFFSET);
@@ -485,7 +485,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 			// primitives will not consume the context
 			if (!fi.isEnum() && !fi.isWrapper() && !fi.isPrimitive()) {
 				if (fi.isTypeFinalOrLeaf()) {
-					cf = serializerNameFor(fi.asmType());
+					cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 					cf.onStack(mv, targetName);
 				} else if (fi.isSpecial()) {
@@ -621,7 +621,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
 				} else if (fi.isTypeFinalOrLeaf()) {
 
-					CachedField cf = serializerNameFor(fi.asmType());
+					CachedField cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 					if (cf.isReified) {
 						mv.visitVarInsn(ALOAD, CTX_OFFSET);

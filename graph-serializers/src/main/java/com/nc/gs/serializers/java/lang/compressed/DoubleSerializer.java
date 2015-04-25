@@ -9,12 +9,12 @@ public class DoubleSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Double.valueOf(src.readDouble());
+		return Double.valueOf(src.readVarDouble());
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeDouble((double) o);
+		dst.writeVarDouble((double) o);
 	}
 
 }

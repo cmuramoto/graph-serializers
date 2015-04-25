@@ -9,12 +9,12 @@ public class LongSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Long.valueOf(src.readLong());
+		return Long.valueOf(src.readVarLong());
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeLong((long) o);
+		dst.writeVarLong((long) o);
 	}
 
 }

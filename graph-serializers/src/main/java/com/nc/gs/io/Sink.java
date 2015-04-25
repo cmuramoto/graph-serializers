@@ -38,6 +38,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	static final long COPY_THRESHOLD = 1024L * 1024L;
 
 	byte[] chunk;
+	boolean disposable;
 	long base;
 	int pos;
 	int lim;
@@ -82,6 +83,11 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	@Override
 	public void close() {
 		pos = mark = 0;
+	}
+
+	public Sink disposable() {
+		disposable = true;
+		return this;
 	}
 
 	public int doPutInt(int v) {
@@ -210,6 +216,11 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		mark = 0;
 	}
 
+	public Sink reusable() {
+		disposable = false;
+		return this;
+	}
+
 	public byte[] toByteArray() {
 		byte[] b = new byte[pos];
 		Bits.copyTo(base, b, 0, pos);
@@ -330,16 +341,6 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putDouble(ix(8), v);
 	}
 
-	@Override
-	public void writeFloat(float v) {
-		U.putFloat(ix(4), v);
-	}
-
-	@Override
-	public void writeInt(int v) {
-		U.putInt(ix(4), v);
-	}
-
 	// protobuf impl
 	// public void writeVarInt(int v) {
 	// while (true) {
@@ -353,12 +354,14 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 	// }
 
-	public void writeInt(int p, int v) {
-		U.putInt(base + p, v);
+	@Override
+	public void writeFloat(float v) {
+		U.putFloat(ix(4), v);
 	}
 
-	public void writeLong(int p, long v) {
-		U.putLong(base + p, v);
+	@Override
+	public void writeInt(int v) {
+		U.putInt(ix(4), v);
 	}
 
 	// protobuf impl
@@ -373,6 +376,14 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 	// }
 	// }
+
+	public void writeInt(int p, int v) {
+		U.putInt(base + p, v);
+	}
+
+	public void writeLong(int p, long v) {
+		U.putLong(base + p, v);
+	}
 
 	@Override
 	public void writeLong(long v) {

@@ -91,15 +91,15 @@ public class MultiMSOptimizer extends ClassVisitor {
 			Hierarchy vh = sv.hierarchy();
 
 			if (kh == null) {
-				kh = Hierarchy.from(keyTypes);
+				kh = Hierarchy.from(keyTypes, sk.isCompressed());
 			} else {
-				kh = kh.markSerializers();
+				kh = kh.markSerializers(sk.isCompressed());
 			}
 
 			if (vh == null) {
-				vh = Hierarchy.from(valTypes);
+				vh = Hierarchy.from(valTypes, sv.isCompressed());
 			} else {
-				vh = vh.markSerializers();
+				vh = vh.markSerializers(sv.isCompressed());
 			}
 
 			Instantiator ctor = mapType == null ? null : SerializerFactory.instantiatorOf(mapType);

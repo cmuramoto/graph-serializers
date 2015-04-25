@@ -118,9 +118,9 @@ public class MultiCSOptimizer extends ClassVisitor {
 			Hierarchy h = shape.hierarchy();
 
 			if (h == null) {
-				h = Hierarchy.from(types);
+				h = Hierarchy.from(types, shape.isCompressed());
 			} else {
-				h = h.markSerializers();
+				h = h.markSerializers(shape.isCompressed());
 			}
 
 			Instantiator ctor = colType == null ? null : SerializerFactory.instantiatorOf(colType);

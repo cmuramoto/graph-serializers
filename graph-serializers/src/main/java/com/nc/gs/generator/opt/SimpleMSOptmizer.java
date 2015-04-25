@@ -83,8 +83,8 @@ public class SimpleMSOptmizer extends ClassVisitor {
 
 			String methodSuffix = String.format("%dX%dX", kSuf, vSuf);
 
-			GraphSerializer kgs = SerializerFactory.serializer(keyType);
-			GraphSerializer vgs = SerializerFactory.serializer(valType);
+			GraphSerializer kgs = SerializerFactory.serializer(keyType, ks.isCompressed());
+			GraphSerializer vgs = SerializerFactory.serializer(valType, vs.isCompressed());
 			Instantiator ctor = mapType == null ? null : SerializerFactory.instantiatorOf(mapType);
 
 			ExtendedType kt = ExtendedType.forRuntime(keyType);
@@ -226,7 +226,7 @@ public class SimpleMSOptmizer extends ClassVisitor {
 					insnList.remove(curr);
 				} else {
 					if ((n.var - decr) >= KGS_OFF) {// don't shift locals below
-													// minimum offset (4)
+						// minimum offset (4)
 						n.var -= decr;
 					}
 				}

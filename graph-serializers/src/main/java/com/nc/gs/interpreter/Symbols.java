@@ -96,14 +96,16 @@ public final class Symbols {
 	public static String _R_optimizedArrayName(String type, ExtendedType[] compTypes, com.nc.gs.interpreter.Shape s) {
 		if (compTypes.length == 1) {
 			String n = type == null ? compTypes[0].name : type;
-			return String.format(_Tags.CSOptimizer.CN_ARRAY_TEMPLATE, abbrevCN(n, '_'), s.nullSymbol(), s.refSymbol());
+			String template = s.isCompressed() ? _Tags.CSOptimizer.CN_ARRAY_TEMPLATE_C : _Tags.CSOptimizer.CN_ARRAY_TEMPLATE;
+			return String.format(template, abbrevCN(n, '_'), s.nullSymbol(), s.refSymbol());
 		} else {
-			return String.format(_Tags.MultiCSOptimizer.CN_ARRAY_TEMPLATE, abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
+			String template = s.isCompressed() ? _Tags.MultiCSOptimizer.CN_ARRAY_TEMPLATE_C : _Tags.MultiCSOptimizer.CN_ARRAY_TEMPLATE;
+			return String.format(template, abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
 		}
 	}
 
 	public static String _R_optimizedCollectionName(String colIN, ExtendedType[] compTypes, com.nc.gs.interpreter.Shape s, boolean forRep) {
-		String template = compTypes.length == 1 ? _Tags.CSOptimizer.CN_TEMPLATE : _Tags.MultiCSOptimizer.CN_TEMPLATE;
+		String template = compTypes.length == 1 ? s.isCompressed() ? _Tags.CSOptimizer.CN_TEMPLATE_C : _Tags.CSOptimizer.CN_TEMPLATE : s.isCompressed() ? _Tags.MultiCSOptimizer.CN_TEMPLATE_C : _Tags.MultiCSOptimizer.CN_TEMPLATE;
 
 		return String.format(template, colIN == null ? "POLY" : abbrevCN(colIN, '_'),//
 				forRep ? "$R$" : "", abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
@@ -116,16 +118,16 @@ public final class Symbols {
 		Hierarchy vh = vs.hierarchy();
 
 		if (ks.hasPolymorphicHierarchy() || vs.hasPolymorphicHierarchy()) {
-			template = _Tags.MultiMSOptimizer.CN_TEMPLATE;
+			template = ks.isCompressed() ? vs.isCompressed() ? _Tags.MultiMSOptimizer.CN_TEMPLATE_KC_VC : _Tags.MultiMSOptimizer.CN_TEMPLATE_KC : vs.isCompressed() ? _Tags.MultiMSOptimizer.CN_TEMPLATE_VC : _Tags.MultiMSOptimizer.CN_TEMPLATE;
 		} else {
-			template = _Tags.MSOptimizer.CN_TEMPLATE;
+			template = ks.isCompressed() ? vs.isCompressed() ? _Tags.MSOptimizer.CN_TEMPLATE_KC_VC : _Tags.MSOptimizer.CN_TEMPLATE_KC : vs.isCompressed() ? _Tags.MSOptimizer.CN_TEMPLATE_VC : _Tags.MSOptimizer.CN_TEMPLATE;
 		}
 
 		return String.format(template, mapIN == null ? "POLY" : abbrevCN(mapIN, '_'), forRep ? "$R$" : "", abbrevCNs(kh.types(), "", "|", true, !kh.complete), abbrevCNs(vh.types(), "", "|", true, !vh.complete), ks.nullSymbol(), ks.refSymbol(), vs.nullSymbol(), vs.refSymbol());
 	}
 
 	public static String _R_optimizedSetName(String setIN, ExtendedType[] types, com.nc.gs.interpreter.Shape s) {
-		String template = types.length == 1 ? _Tags.CSOptimizer.CN_SET_TEMPLATE : _Tags.MultiCSOptimizer.CN_SET_TEMPLATE;
+		String template = types.length == 1 ? s.isCompressed() ? _Tags.CSOptimizer.CN_SET_TEMPLATE_C : _Tags.CSOptimizer.CN_SET_TEMPLATE : s.isCompressed() ? _Tags.MultiCSOptimizer.CN_SET_TEMPLATE_C : _Tags.MultiCSOptimizer.CN_SET_TEMPLATE;
 
 		return String.format(template, setIN == null ? "POLY" : abbrevCN(setIN, '_'), abbrevCNs(types, "", "|", true, !s.isHierarchyComplete()), s.canBeNull() ? 1 : 0, s.disregardRefs() ? 1 : 0);
 	}

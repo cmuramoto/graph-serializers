@@ -77,7 +77,7 @@ public final class Shape implements Cloneable {
 			k = 0;
 		}
 
-		return (s == null) && (k == 0) ? SHAPELESS_COL : new Shape(s, k);
+		return (s == null) && (k == 0) ? new Shape(null, ObjectShape.COLLECTION) : new Shape(s, k);
 	}
 
 	public static Shape of(Map<?, ?> m) {
@@ -107,7 +107,7 @@ public final class Shape implements Cloneable {
 			k = 0;
 		}
 
-		return (s == null) && (k == 0) ? SHAPELESS_SET : new Shape(s, k);
+		return (s == null) && (k == 0) ? new Shape(null, ObjectShape.SET) : new Shape(s, k);
 	}
 
 	public static Object state(int s, Collection<?> o) {
@@ -133,9 +133,9 @@ public final class Shape implements Cloneable {
 		return new Shape(null, k);
 	}
 
-	public static Shape SHAPELESS_COL = new Shape(null, ObjectShape.COLLECTION);
+	// public static Shape SHAPELESS_COL = new Shape(null, ObjectShape.COLLECTION);
 
-	public static Shape SHAPELESS_SET = new Shape(null, ObjectShape.SET);
+	// public static Shape SHAPELESS_SET = new Shape(null, ObjectShape.SET);
 
 	public Object state;
 
@@ -244,6 +244,10 @@ public final class Shape implements Cloneable {
 		return (k & ObjectShape.COLLECTION) != 0;
 	}
 
+	public boolean isCompressed() {
+		return (k & ObjectShape.COMPRESS) != 0;
+	}
+
 	public boolean isEnumSet() {
 		return (k & ObjectShape.ENUM_SET) == ObjectShape.ENUM_SET;
 	}
@@ -279,6 +283,14 @@ public final class Shape implements Cloneable {
 
 	public int refSymbol() {
 		return disregardRefs() ? 1 : 0;
+	}
+
+	public void setCompressed(boolean n) {
+		if (n) {
+			k |= ObjectShape.COMPRESS;
+		} else {
+			k &= ~ObjectShape.COMPRESS;
+		}
 	}
 
 	public void setDisregardRefs(boolean op) {

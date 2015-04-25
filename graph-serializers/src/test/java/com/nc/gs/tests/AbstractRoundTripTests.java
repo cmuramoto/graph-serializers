@@ -20,6 +20,7 @@ import com.nc.gs.interpreter.Hierarchy;
 import com.nc.gs.interpreter.Shape;
 import com.nc.gs.interpreter.StreamShape;
 import com.nc.gs.io.Sink;
+import com.nc.gs.log.Log;
 
 public abstract class AbstractRoundTripTests {
 
@@ -108,7 +109,7 @@ public abstract class AbstractRoundTripTests {
 	public static GraphSerializer rawForArray(Class<?>[] types, boolean nullabeEls, boolean onlyPayload, boolean optimize) {
 		Shape shape = new Shape(null, ObjectShape.ARRAY | (nullabeEls ? ObjectShape.NULLABLE : 0) | (onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0));
 
-		Hierarchy h = Hierarchy.from(types);
+		Hierarchy h = Hierarchy.from(types, false);
 		h.complete = true;
 		shape.state = h;
 
@@ -127,7 +128,7 @@ public abstract class AbstractRoundTripTests {
 
 		Shape shape = new Shape(null, k | (nullabeEls ? ObjectShape.NULLABLE : 0) | (onlyPayload ? ObjectShape.ONLY_PAYLOAD : 0) | (optimize ? ObjectShape.OPTIMIZE : 0));
 
-		Hierarchy h = Hierarchy.from(types);
+		Hierarchy h = Hierarchy.from(types, false);
 		h.complete = true;
 		shape.state = h;
 
@@ -174,10 +175,32 @@ public abstract class AbstractRoundTripTests {
 		Assert.assertNotNull("Root object cannot be null.", root);
 		return roundTrip(SerializerFactory.serializer(root.getClass()), root);
 	}
-	
-	public static <T> T roundTrip(T root,Sink dst) {
+
+	public static <T> T roundTrip(T root, Sink dst) {
 		Assert.assertNotNull("Root object cannot be null.", root);
-		return roundTrip(SerializerFactory.serializer(root.getClass()), root,dst);
+		return roundTrip(SerializerFactory.serializer(root.getClass()), root, dst);
+	}
+
+	public static void roundTripAndCompareLen(Object cc, Object dc) {
+		roundTrip(cc);
+		roundTrip(dc);
+
+		int cl, ucl;
+
+		try (Context c = Context.writing(); Sink s = sink()) {
+			c.writeRoot(s, cc);
+			cl = s.position();
+		}
+
+		try (Context c = Context.writing(); Sink s = sink()) {
+			c.writeRoot(s, dc);
+			ucl = s.position();
+		}
+
+		Log.info("Compressed Len (%s): %d/Uncompressed Len: %d", cc.getClass().getSimpleName(), cl, ucl);
+
+		Assert.assertTrue(cl < ucl);
+
 	}
 
 	public static <T> T roundTripIO(T root) throws IOException {
@@ -201,6 +224,11 @@ public abstract class AbstractRoundTripTests {
 
 			return rec;
 		}
+	}
+
+	@SuppressWarnings("resource")
+	static Sink sink() {
+		return new Sink().disposable();
 	}
 
 	public static Shape COLLECTION = Shape.stateless(ObjectShape.COLLECTION);

@@ -9,12 +9,12 @@ public final class ShortSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Short.valueOf(src.readShort());
+		return Short.valueOf(src.readVarShort());
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeShort((short) o);
+		dst.writeVarShort((short) o);
 	}
 
 }

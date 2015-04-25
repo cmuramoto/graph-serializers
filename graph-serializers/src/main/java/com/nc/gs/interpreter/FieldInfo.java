@@ -250,10 +250,11 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 	public static class ShapeVisitor extends AnnotationVisitor {
 		Set<ExtendedType> hierarchy;
-		boolean onlyPayload = false;
+		boolean onlyPayload;
 		boolean nullable = true;
 		boolean complete = true;
-		boolean isLeaf = false;
+		boolean isLeaf;
+		boolean compress;
 
 		public ShapeVisitor() {
 			super(Opcodes.ASM5);
@@ -464,11 +465,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			if (ks != null) {
 				sk.setNullable(ks.isNullable());
 				sk.setDisregardRefs(ks.isOnlyPayload());
+				sk.setCompressed(ks.compress);
 			}
 
 			if (vs != null) {
 				sv.setNullable(vs.isNullable());
 				sv.setDisregardRefs(vs.isOnlyPayload());
+				sv.setCompressed(vs.compress);
 			}
 
 			if (pair.k.declaresTypes() || pair.v.declaresTypes()) {
@@ -540,6 +543,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			if (shapeVisitor != null) {
 				s.setNullable(shapeVisitor.nullable);
 				s.setDisregardRefs(shapeVisitor.onlyPayload);
+				s.setCompressed(shapeVisitor.compress);
 			}
 
 			if ((types != null) && (types.length > 0)) {
@@ -556,6 +560,8 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				if (s.isSet()) {
 					targetIN = Symbols._R_optimizedSetName(type.name, types, s);
 				} else if (s.isArray()) {
+					// Arrays have no 'slot' to place @Compressed!
+					s.setCompressed(isCompressed());
 					targetIN = Symbols._R_optimizedArrayName(basicComponentType().name, types, s);
 				} else {
 					targetIN = Symbols._R_optimizedCollectionName(type.name, types, s, rep);
@@ -1220,6 +1226,9 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				case _Meta.LeafNode.desc:
 					sv.complete = true;
 					sv.isLeaf = true;
+					break;
+				case _Meta.Compress.desc:
+					sv.compress = true;
 					break;
 				case _Meta.Hierarchy.desc:
 					rv = sv;

@@ -9,12 +9,12 @@ public class FloatSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Float.valueOf(src.readFloat());
+		return Float.valueOf(src.readVarFloat());
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeFloat((float) o);
+		dst.writeVarFloat((float) o);
 	}
 
 }

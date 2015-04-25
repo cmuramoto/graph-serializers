@@ -90,7 +90,9 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	IdentityHashMap<FieldInfo, SpecialField> fiToS;
 	List<SpecialField> sfCache;
 
-	Map<Type, CachedField> cachedFields = new HashMap<>();
+	Map<Type, CachedField> cachedFields;
+	// Map<Type, CachedField> compCachedFields;
+
 	List<FieldInfo> prims;
 	List<FieldInfo> nullable;
 
@@ -116,19 +118,22 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 	}
 
 	private void bindKnownSerializers(MethodVisitor mv) {
-		Set<Entry<Type, CachedField>> es = cachedFields.entrySet();
+		Map<Type, CachedField> cachedFields = this.cachedFields;
 
-		for (Entry<Type, CachedField> e : es) {
-			CachedField cf = e.getValue();
-			if ((cf == null) || cf.isReified) {
-				continue;
+		if (cachedFields != null) {
+			Set<Entry<Type, CachedField>> es = cachedFields.entrySet();
+
+			for (Entry<Type, CachedField> e : es) {
+				CachedField cf = e.getValue();
+				if ((cf == null) || cf.isReified) {
+					continue;
+				}
+				mv.visitLdcInsn(e.getKey());
+				mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
+				mv.visitTypeInsn(CHECKCAST, cf.serializerIN);
+				mv.visitFieldInsn(PUTSTATIC, targetName, cf.targetFieldName, cf.serializerDesc());
 			}
-			mv.visitLdcInsn(e.getKey());
-			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
-			mv.visitTypeInsn(CHECKCAST, cf.serializerIN);
-			mv.visitFieldInsn(PUTSTATIC, targetName, cf.targetFieldName, cf.serializerDesc());
 		}
-
 		List<SpecialField> cfs = sfCache;
 
 		if (cfs != null) {
@@ -139,16 +144,14 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 	}
 
-	public CachedField cachedFieldFor(Type pojo, String serializer) {
+	protected final Map<Type, CachedField> cachedFields() {
+		Map<Type, CachedField> rv = this.cachedFields;
 
-		CachedField cf = cachedFields.get(pojo);
-
-		if (cf == null) {
-			cf = new CachedField(targetCachedFieldName(pojo.getInternalName()), serializer, false);
-			cachedFields.put(pojo, cf);
+		if (rv == null) {
+			rv = this.cachedFields = new HashMap<Type, CachedField>();
 		}
 
-		return cf;
+		return rv;
 	}
 
 	private void cacheEnumConstants(MethodVisitor mv) {
@@ -256,7 +259,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 				String[] names = new String[gens.length];
 
 				for (int i = 0; i < gens.length; i++) {
-					CachedField cf = serializerNameFor(gens[i].type());
+					CachedField cf = serializerNameFor(gens[i].type(), fi.isCompressed());
 					sers[i] = Type.getType(cf.serializerDesc());
 					if (cf.isReified) {
 						mask |= (1L << i);
@@ -308,14 +311,19 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 
 	private void forceLoadingOfKnownSerializers(MethodVisitor mv) {
 
-		for (Entry<Type, CachedField> pendingGen : cachedFields.entrySet()) {
-			CachedField value = pendingGen.getValue();
-			if ((value == null) || !value.isReified) {
-				continue;
+		Map<Type, CachedField> cfs = this.cachedFields;
+
+		if (cfs != null) {
+
+			for (Entry<Type, CachedField> pendingGen : cfs.entrySet()) {
+				CachedField value = pendingGen.getValue();
+				if ((value == null) || !value.isReified) {
+					continue;
+				}
+				mv.visitLdcInsn(pendingGen.getKey());
+				mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
+				mv.visitInsn(POP);
 			}
-			mv.visitLdcInsn(pendingGen.getKey());
-			mv.visitMethodInsn(INVOKESTATIC, _SerializerFactory.name, _SerializerFactory.serializer, _SerializerFactory.serializer_D, false);
-			mv.visitInsn(POP);
 		}
 	}
 
@@ -363,30 +371,10 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 		return String.format("(%s%s%s)V", _Context.desc, _Sink.desc, t.getDescriptor());
 	}
 
-	public String serializerDescFor(Type t) {
+	public CachedField serializerNameFor(Type t, boolean compressed) {
 		try {
-			Class<?> rt = Class.forName(t.getClassName(), false, Thread.currentThread().getContextClassLoader());
-			GraphSerializer lookup = SerializerFactory.lookup(rt);
-
-			if (lookup == null) {
-				cachedFields.put(t, null);
-				return "L" + t.getInternalName() + _SerializerFactory.genClassSuffix_D;
-			}
-
-			return Type.getDescriptor(lookup.getClass());
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	// public String typedWritePayloadDesc(Type t) {
-	// return String.format("(%s%s%s)V", core.Context.desc, Sink.desc,
-	// t.getDescriptor());
-	// }
-
-	public CachedField serializerNameFor(Type t) {
-		try {
-			CachedField rv = cachedFields.get(t);
+			Map<Type, CachedField> cfs = cachedFields();
+			CachedField rv = cfs.get(t);
 
 			if (rv == null) {
 
@@ -394,7 +382,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 				Class<?> rt = Class.forName(t.getClassName(), false, Thread.currentThread().getContextClassLoader());
 
 				boolean gen;
-				GraphSerializer lookup = SerializerFactory.lookup(rt);
+				GraphSerializer lookup = compressed ? SerializerFactory.compressing(rt) : SerializerFactory.lookup(rt);
 
 				if (lookup == null) {
 					gen = rt.getClassLoader() != null;
@@ -404,7 +392,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 					serIN = Type.getInternalName(lookup.getClass());
 				}
 
-				cachedFields.put(t, rv = new CachedField(targetCachedFieldName(t.getInternalName()), serIN, gen));
+				cfs.put(t, rv = new CachedField(targetCachedFieldName(t.getInternalName()), serIN, gen));
 			}
 			return rv;
 		} catch (ClassNotFoundException e) {
@@ -453,15 +441,18 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 			fv.visitEnd();
 		}
 
-		Set<Entry<Type, CachedField>> es = cachedFields.entrySet();
+		Map<Type, CachedField> cfs = cachedFields;
+		if (cfs != null) {
+			Set<Entry<Type, CachedField>> es = cfs.entrySet();
 
-		for (Entry<Type, CachedField> e : es) {
-			CachedField cf = e.getValue();
-			if ((cf == null) || cf.isReified) {
-				continue;
+			for (Entry<Type, CachedField> e : es) {
+				CachedField cf = e.getValue();
+				if ((cf == null) || cf.isReified) {
+					continue;
+				}
+				fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, cf.targetFieldName, cf.serializerDesc(), null, null);
+				fv.visitEnd();
 			}
-			fv = cv.visitField(ACC_PRIVATE + ACC_STATIC + ACC_FINAL, cf.targetFieldName, cf.serializerDesc(), null, null);
-			fv.visitEnd();
 		}
 	}
 

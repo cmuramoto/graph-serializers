@@ -22,7 +22,7 @@ import com.nc.gs.core.SerializerFactory;
 
 public final class Hierarchy implements Comparator<Class<?>> {
 
-	public static Hierarchy from(Class<?>[] types) {
+	public static Hierarchy from(Class<?>[] types, boolean compressed) {
 		Hierarchy h = Hierarchy.unknown();
 
 		// In this case, we are already working at runtime. So sort it.
@@ -34,7 +34,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 
 		long reified = 0l;
 		for (int i = 0; i < types.length; i++) {
-			Class<? extends GraphSerializer> gs = SerializerFactory.serializer(types[i]).getClass();
+			Class<? extends GraphSerializer> gs = SerializerFactory.serializer(types[i], compressed).getClass();
 			reified |= gs.isSynthetic() ? 1L << i : 0;
 			sers[i] = Type.getType(gs);
 			kt[i] = ExtendedType.forRuntime(types[i]);
@@ -135,6 +135,10 @@ public final class Hierarchy implements Comparator<Class<?>> {
 	}
 
 	public Hierarchy markSerializers() {
+		return this;
+	}
+
+	public Hierarchy markSerializers(boolean compress) {
 		if (declaresTypes()) {
 			long reified = 0l;
 
@@ -152,7 +156,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 
 			for (int i = rts.length - 1; i >= 0; i--) {
 				Class<?> type = rts[i];
-				Class<? extends GraphSerializer> gs = SerializerFactory.serializer(type).getClass();
+				Class<? extends GraphSerializer> gs = SerializerFactory.serializer(type, compress).getClass();
 				sers[i] = Type.getType(gs);
 				reified |= gs.isSynthetic() ? 1L << i : 0;
 			}
@@ -198,7 +202,7 @@ public final class Hierarchy implements Comparator<Class<?>> {
 		ExtendedType[] types = this.types;
 
 		return types == null || types.length != 1 ? //
-		Optional.empty()
+				Optional.empty()
 				: Optional.of(types[0].runtimeType());
 	}
 

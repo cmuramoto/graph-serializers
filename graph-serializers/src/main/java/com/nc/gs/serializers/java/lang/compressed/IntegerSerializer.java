@@ -9,12 +9,12 @@ public class IntegerSerializer extends GraphSerializer {
 
 	@Override
 	public Object instantiate(Source src) {
-		return Integer.valueOf(src.readInt());
+		return Integer.valueOf(src.readVarInt());
 	}
 
 	@Override
 	public void writeData(Context c, Sink dst, Object o) {
-		dst.writeInt((Integer) o);
+		dst.writeVarInt((Integer) o);
 	}
 
 }
