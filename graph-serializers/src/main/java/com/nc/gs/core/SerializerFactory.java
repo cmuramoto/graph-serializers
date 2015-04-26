@@ -105,8 +105,8 @@ public final class SerializerFactory {
 			Class<?> compType = shape.hasPolymorphicHierarchy() ? null : shape.hierarchy().uniqueConcrete();
 			if ((colType == null) && (compType == null)) {
 				rv = shape.disregardRefs() ? //
-				shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
-						: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
+						shape.canBeNull() ? CollectionSerializer.NO_REFS : CollectionSerializer.NO_REFS_NON_NULL //
+								: shape.canBeNull() ? CollectionSerializer.WITH_REFS : CollectionSerializer.WITH_REFS_NON_NULL;
 			} else {
 				rv = new CollectionSerializer(colType, compType, shape.canBeNull(), shape.disregardRefs());
 			}
@@ -304,7 +304,9 @@ public final class SerializerFactory {
 	public static GraphSerializer serializer(Class<?> c, boolean tryCompressed) {
 		GraphSerializer rv = tryCompressed ? COMPRESSING.get(c) : SERIALIZERS.get(c);
 		if (rv == null) {
-			Log.warn("No compressing serializer for %s.", c.getName());
+			if (tryCompressed) {
+				Log.warn("No compressing serializer for %s.", c.getName());
+			}
 			rv = serializer(c);
 		}
 

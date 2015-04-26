@@ -38,6 +38,7 @@ public interface _Tags {
 		long ACC_JAVA_TYPE/*        */= 0x4000000000L;
 		long ACC_INNER/*            */= 0x8000000000L;
 		long ACC_DECL_INNER/*       */= 0x10000000000L;
+		long ACC_FULL_HIERARCHY/*   */= 0x20000000000L;
 	}
 
 	public interface FieldInfo {

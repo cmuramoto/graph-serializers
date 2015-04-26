@@ -351,8 +351,13 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 								}
 							}
 						}
+					} else {
+						// if ShapeVisitor does not declare hierarchy, use the parent's, if any.
+						types.addAll(superType.hierarchy());
 					}
 				}
+			} else {
+				types.addAll(superType.hierarchy());
 			}
 
 			int last = 0;
@@ -970,11 +975,18 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		final CollectionMeta meta = collectionMeta();
 		ShapeVisitor s;
 
-		if (meta != null) {
-			s = meta.getShape();
+		if (!complete) {
+			if (meta != null) {
+				s = meta.getShape();
 
-			if ((s != null) && !complete) {
-				complete = (superType != ExtendedType.OBJECT) && !superType.isAbstract() && (s.complete || s.isLeaf);
+				if (s != null) {
+					complete = (superType != ExtendedType.OBJECT) && !superType.isAbstract() && (s.complete || s.isLeaf);
+				} else {
+					complete = superType.isFullHierarchyDeclared();
+				}
+			} else {
+				s = null;
+				complete = superType.isFullHierarchyDeclared();
 			}
 		} else {
 			s = null;
@@ -1003,23 +1015,23 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 		boolean vc = vs.isFinal() || vs.isLeaf();
 
 		final MapMeta mm = mapMeta();
-		ShapeVisitor key;
-		ShapeVisitor val;
+		ShapeVisitor key = !kc && (mm != null) ? mm.getKey() : null;
+		ShapeVisitor val = !vc && (mm != null) ? mm.getVal() : null;
 
-		if (mm != null) {
-			key = mm.getKey();
-
-			if ((key != null) && !kc) {
+		if (!kc) {
+			if (key != null) {
 				kc = key.complete || key.isLeaf;
+			} else {
+				kc = ks.isFullHierarchyDeclared();
 			}
+		}
 
-			val = mm.getVal();
-			if ((val != null) && !vc) {
+		if (!vc) {
+			if (val != null) {
 				vc = val.complete || val.isLeaf;
+			} else {
+				vc = vs.isFullHierarchyDeclared();
 			}
-
-		} else {
-			key = val = null;
 		}
 
 		return Pair.of(new Hierarchy(ks, mergeConcreteGenericInfo(ks, key), kc), new Hierarchy(vs, mergeConcreteGenericInfo(vs, val), vc));

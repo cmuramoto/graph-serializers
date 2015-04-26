@@ -13,6 +13,7 @@ import static symbols.io.abstraction._Tags.ExtendedType.ACC_COMPRESS_PRIMS;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_DECL_FINAL;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_DECL_INNER;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_DECL_PVT;
+import static symbols.io.abstraction._Tags.ExtendedType.ACC_FULL_HIERARCHY;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_INNER;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_LEAF;
 import static symbols.io.abstraction._Tags.ExtendedType.ACC_REJECT_NON_TRANSIENT;
@@ -20,11 +21,15 @@ import static symbols.io.abstraction._Tags.ExtendedType.ACC_WELCOME_TRANSIENT;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import symbols.io.abstraction._Meta;
@@ -59,11 +64,62 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		@Override
 		public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 			if (!visible) {
-				if (_Meta.LeafNode.desc.equals(desc)) {
+				switch (desc) {
+				case _Meta.LeafNode.desc:
 					info.access |= ACC_LEAF;
-				} else if (_Meta.Fields.desc.equals(desc)) {
+					break;
+				case _Meta.Fields.desc:
 					return new ClassInfo.Fields(info);
+				case _Meta.Hierarchy.desc:
+					info.access |= ACC_FULL_HIERARCHY;
+
+					if (info.isFinal()) {
+						return null;
+					}
+
+					return new AnnotationVisitor(Opcodes.ASM5, super.visitAnnotation(desc, visible)) {
+
+						@Override
+						public void visit(String name, Object value) {
+							if (name == null) {
+								// ExtendedType::isA might lead to circularity issues. Force
+								// eager-caching of info.
+								try (VisitationContext vc = VisitationContext.current()) {
+									vc.visited(info);
+
+									final ExtendedType et = ExtendedType.forInternalName(((Type) value).getInternalName(), false);
+
+									if (et.isA(info)) {
+										Set<ExtendedType> children = info.children;
+
+										if (children == null) {
+											children = info.children = new HashSet<ExtendedType>(2);
+										}
+
+										children.add(et);
+									}
+								}
+							} else if (name.equals(_Meta.Hierarchy.complete)) {
+								if (!(boolean) value) {
+									info.access &= ~ACC_FULL_HIERARCHY;
+								}
+							}
+						}
+
+						@Override
+						public AnnotationVisitor visitArray(String name) {
+							if (name.equals(_Meta.Hierarchy.types)) {
+								return this;
+							}
+
+							return null;
+						}
+
+					};
+				default:
+					break;
 				}
+
 			}
 			return null;
 		}
@@ -362,6 +418,8 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	ExtendedType parent;
 
+	Set<ExtendedType> children;
+
 	public ExtendedType(int access, String name, String superName, String signature, String[] interfaces) {
 		super();
 		this.access = access;
@@ -435,8 +493,8 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		if (interfaces == EMPTY) {
 			return false;
 		}
-		for (int i = 0; i < interfaces.length; i++) {
-			if (interfaces[i].equals(name)) {
+		for (String interface1 : interfaces) {
+			if (interface1.equals(name)) {
 				return true;
 			}
 		}
@@ -535,6 +593,12 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		return result;
 	}
 
+	public Set<ExtendedType> hierarchy() {
+		Set<ExtendedType> rv = children;
+
+		return rv == null ? Collections.emptySet() : rv;
+	}
+
 	public boolean isA(ExtendedType upper) {
 		if ((this == upper) || name.equals(upper.name)) {
 			return true;
@@ -589,6 +653,10 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 
 	public boolean isFinal() {
 		return (access & ACC_FINAL) != 0;
+	}
+
+	public boolean isFullHierarchyDeclared() {
+		return (access & ACC_FULL_HIERARCHY) != 0;
 	}
 
 	public boolean isInnerClass() {
