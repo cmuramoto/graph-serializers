@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import serializers.impl.gs.GSImpl;
 import serializers.impl.protobuf.ProtobufSerializer;
+import serializers.impl.thrift.ThriftSerializer;
 import serializers.spi.CheckingObjectSerializer;
 import serializers.spi.ObjectSerializer;
 
@@ -23,17 +23,22 @@ public class BenchmarkRunner {
 
 	public static void main(String... args) throws Exception {
 		BenchmarkRunner runner = new BenchmarkRunner();
+		boolean thrift = Boolean.getBoolean("benchmark.enable.thrift");
 
-		for (int i = 0; i < 5; i++) {
-			runner.addObjectSerializer(new GSImpl());
-			runner.addObjectSerializer(new ProtobufSerializer());
-			// runner.addObjectSerializer(new ThriftSerializer());
-			// runner.addObjectSerializer(new JavaSerializer());
+		runner.addObjectSerializer(new serializers.impl.gs.compressed.GSImpl());
+		runner.addObjectSerializer(new serializers.impl.gs.std.GSImpl());
+		runner.addObjectSerializer(new ProtobufSerializer());
+		if (thrift) {
+			runner.addObjectSerializer(new ThriftSerializer());
 		}
+		// runner.addObjectSerializer(new JavaSerializer());
 
 		System.out.println("Starting");
 
-		runner.start();
+		int repeats = Integer.getInteger("benchmark.repeats.max", 5);
+		for (int i = 1; i <= repeats; i++) {
+			runner.start(i, repeats);
+		}
 	}
 
 	public final static int ITERATIONS = 2000;
@@ -216,8 +221,10 @@ public class BenchmarkRunner {
 		return iterationTime(delta, iterations);
 	}
 
-	private void start() throws Exception {
-		System.out.printf("%-24s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %10s\n", " ", "Object create", "Serialize", "Create+Serialize", "/w Same Object", "Deserialize", "and Check Media", "and Check All", "Total Time", "Serialized Size");
+	private void start(int curr, int max) throws Exception {
+		if (curr == 1) {
+			System.out.printf("%-24s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %15s, %10s\n", " ", "Object create", "Serialize", "Create+Serialize", "/w Same Object", "Deserialize", "and Check Media", "and Check All", "Total Time", "Serialized Size");
+		}
 		EnumMap<measurements, Map<String, Double>> values = new EnumMap<measurements, Map<String, Double>>(measurements.class);
 		for (measurements m : measurements.values()) {
 			values.put(m, new HashMap<String, Double>());
@@ -293,9 +300,13 @@ public class BenchmarkRunner {
 
 			addValue(values, serializer.getName(), timeCreate, timeSerializeDifferentObjects, timeSerializeSameObject, timeDeserializeNoFieldAccess, timeDeserializeAndCheckMediaField, timeDeserializeAndCheckAllFields, totalTime, array.length);
 		}
-		printImages(values);
+
+		if (curr == max) {
+			printImages(values);
+		}
 	}
 
+	// Update to better value only.
 	private void update(EnumMap<measurements, Map<String, Double>> values, measurements m, String name, double v) {
 		Double d = values.get(m).get(name);
 

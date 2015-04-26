@@ -1,4 +1,4 @@
-package domain.gs;
+package domain.gs.std;
 
 import java.io.Serializable;
 

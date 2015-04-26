@@ -139,7 +139,7 @@ public final class Context implements AutoCloseable {
 	}
 
 	private static Context borrow() {
-		Context rv = CONTEXTS.poll();
+		Context rv = POOL.poll();
 
 		if (rv == null) {
 			rv = new Context();
@@ -273,7 +273,7 @@ public final class Context implements AutoCloseable {
 
 	public static final ConcurrentHashMap<Class<?>, Object> C_TYPES;
 
-	private static final ConcurrentLinkedQueue<Context> CONTEXTS;
+	private static final ConcurrentLinkedQueue<Context> POOL;
 
 	static final ClassTable ct;
 
@@ -319,7 +319,7 @@ public final class Context implements AutoCloseable {
 			}
 			return rv;
 		};
-		CONTEXTS = new ConcurrentLinkedQueue<>();
+		POOL = new ConcurrentLinkedQueue<>();
 		C_TYPES = new ConcurrentHashMap<>();
 		R_TYPES = new ConcurrentHashMap<>();
 		P_TYPES = new ConcurrentSkipListMap<>(A_NAME_CMP);
@@ -345,6 +345,26 @@ public final class Context implements AutoCloseable {
 	private Context() {
 	}
 
+	public Context asReading() {
+		write = false;
+		return this;
+	}
+
+	public Context asWriting() {
+		write = true;
+		return this;
+	}
+
+	// For use with no Pool
+	public void clear() {
+		if (write) {
+			m.clear();
+		} else {
+			Bits.clearFast(refs, maxId);
+			maxId = 0;
+		}
+	}
+
 	@Override
 	public void close() {
 		if (write) {
@@ -354,7 +374,7 @@ public final class Context implements AutoCloseable {
 			maxId = 0;
 		}
 
-		CONTEXTS.offer(this);
+		POOL.offer(this);
 	}
 
 	public GraphSerializer forNested(Sink dst, Object o) {

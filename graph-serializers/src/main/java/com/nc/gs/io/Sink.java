@@ -1,6 +1,7 @@
 package com.nc.gs.io;
 
 import static com.nc.gs.util.Utils.U;
+import static sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
 
 import java.io.Closeable;
 import java.io.DataOutput;
@@ -36,6 +37,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	}
 
 	static final long COPY_THRESHOLD = 1024L * 1024L;
+	static final long BASE = ARRAY_CHAR_BASE_OFFSET;
 
 	byte[] chunk;
 	boolean disposable;
@@ -292,6 +294,80 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		Bits.copyFrom(ix(len << 1), v, off, len);
 	}
 
+	boolean writeAscii(char[] v) {
+		int l = (v.length << 1) >> 3;
+
+		long bytes = 0L;
+		int shift = 0;
+
+		for (int i = 0; i < l; i++) {
+			long txt = U.getLong(v, BASE + (i << 3));
+
+			int cs = 0;
+			for (int j = 0; j < 4; j++) {
+				char c = (char) (byte) (txt >> cs);
+				cs += 16;
+
+				if (c <= 0x007F) {
+					if (shift == 64) {
+						writeLong(bytes);
+						bytes = shift = 0;
+					}
+					bytes |= ((long) ((byte) c)) << shift;
+					shift += 8;
+				} else {
+					return false;
+				}
+			}
+		}
+
+		if (shift == 64) {
+			writeLong(bytes);
+			bytes = shift = 0;
+		}
+
+		int r = (v.length << 1) & 7;
+
+		if (r > 0) {
+			for (int i = (v.length >> 2) << 2; i < v.length; i++) {
+				char c = v[i];
+				if (c <= 0x007F) {
+					if (shift == 64) {
+						writeLong(bytes);
+						bytes = shift = 0;
+					}
+					bytes |= ((long) ((byte) c)) << shift;
+					shift += 8;
+				} else {
+					return false;
+				}
+			}
+		}
+
+		if (shift > 0) {
+			if (shift == 64) {
+				writeLong(bytes);
+			} else {
+				// We could branch the code to specialized write ops according to the value of
+				// shift.
+				do {
+					char c = (char) (byte) bytes;
+
+					if (c <= 0x007F) {
+						writeByte(c);
+					} else {
+						return false;
+					}
+
+					bytes >>= 8;
+					shift -= 8;
+				} while (shift > 0);
+			}
+		}
+
+		return true;
+	}
+
 	@Override
 	public void writeBoolean(boolean v) {
 		writeByte(v ? 1 : 0);
@@ -336,11 +412,6 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		Bits.copyFrom(ix(len << 1), src, 0, len);
 	}
 
-	@Override
-	public void writeDouble(double v) {
-		U.putDouble(ix(8), v);
-	}
-
 	// protobuf impl
 	// public void writeVarInt(int v) {
 	// while (true) {
@@ -355,13 +426,13 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 
 	@Override
-	public void writeFloat(float v) {
-		U.putFloat(ix(4), v);
+	public void writeDouble(double v) {
+		U.putDouble(ix(8), v);
 	}
 
 	@Override
-	public void writeInt(int v) {
-		U.putInt(ix(4), v);
+	public void writeFloat(float v) {
+		U.putFloat(ix(4), v);
 	}
 
 	// protobuf impl
@@ -376,6 +447,11 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	// }
 	// }
 	// }
+
+	@Override
+	public void writeInt(int v) {
+		U.putInt(ix(4), v);
+	}
 
 	public void writeInt(int p, int v) {
 		U.putInt(base + p, v);
@@ -434,20 +510,25 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	public void writeUTF(String s) {
 		char[] value = (char[]) U.getObject(s, Utils.V_OFF);
 		final int len = value.length;
-		writeVarInt(len);
 		int c;
+		writeVarInt(len);
 
-		for (int i = 0; i < len; i++) {
-			c = value[i];
-			if (c <= 0x007F) {
-				writeByte((byte) c);
-			} else if (c > 0x07FF) {
-				writeByte((byte) (0xE0 | c >> 12 & 0x0F));
-				writeByte((byte) (0x80 | c >> 6 & 0x3F));
-				writeByte((byte) (0x80 | c >> 0 & 0x3F));
-			} else {
-				writeByte((byte) (0xC0 | c >> 6 & 0x1F));
-				writeByte((byte) (0x80 | c >> 0 & 0x3F));
+		int pos = this.pos;
+
+		if (!writeAscii(value)) {
+			this.pos = pos;
+			for (int i = 0; i < len; i++) {
+				c = value[i];
+				if (c <= 0x007F) {
+					writeByte((byte) c);
+				} else if (c > 0x07FF) {
+					writeByte((byte) (0xE0 | c >> 12 & 0x0F));
+					writeByte((byte) (0x80 | c >> 6 & 0x3F));
+					writeByte((byte) (0x80 | c >> 0 & 0x3F));
+				} else {
+					writeByte((byte) (0xC0 | c >> 6 & 0x1F));
+					writeByte((byte) (0x80 | c >> 0 & 0x3F));
+				}
 			}
 		}
 	}

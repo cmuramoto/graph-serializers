@@ -1,4 +1,4 @@
-package domain.gs;
+package domain.gs.compressed;
 
 import java.io.Serializable;
 import java.util.ArrayList;

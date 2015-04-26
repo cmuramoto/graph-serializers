@@ -1,12 +1,11 @@
-package domain.gs;
+package domain.gs.std;
 
 import java.io.Serializable;
 
-import com.nc.gs.meta.Fields;
+import com.nc.gs.meta.Compress;
 import com.nc.gs.meta.NotNull;
 import com.nc.gs.meta.OnlyPayload;
 
-@Fields(compressByDefault = true)
 public class Image implements Serializable {
 	public enum Size {
 		SMALL, LARGE
@@ -19,7 +18,9 @@ public class Image implements Serializable {
 	public String uri;
 	@OnlyPayload
 	public String title;
+	@Compress
 	public int width;
+	@Compress
 	public int height;
 	@NotNull
 	public Size size;

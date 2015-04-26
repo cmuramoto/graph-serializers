@@ -37,6 +37,10 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
 
+	static final long ARRAY_CHAR_BASE_OFFSET = sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
+
+	static final int MAX_ASCII = 0x7F;
+
 	byte[] chunk;
 
 	protected boolean disposable;
@@ -305,6 +309,135 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return len;
 	}
 
+	// TODO - Bounds checking
+	private char[] readAscii(char[] chars) {
+		int len = (chars.length) >> 3;
+
+		int ix = 0;
+
+		for (int i = 0; i < len; i++) {
+			long txt = readLong();
+
+			long l, r;
+
+			if (((l = txt & 0xFFFFFFFFL) & 0xFF) <= 0X7F && ((l >> 8) & 0xFF) <= 0X7F && ((l >> 16) & 0xFF) <= 0X7F && ((l >> 24) & 0xFF) <= 0X7F //
+					&& //
+					(((r = txt >> 0X20) & 0xFFFFFFFFL) & 0xFF) <= 0X7F && ((r >> 8) & 0xFF) <= 0X7F && ((r >> 16) & 0xFF) <= 0X7F && ((r >> 24) & 0xFF) <= 0X7F //
+			) {
+				U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (l & 0xFF) | ((l & 0XFF00) << 8) | ((l & 0XFF0000) << 16) | ((l & 0xFF000000) << 24));
+				ix += 4;
+				U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (r & 0xFF) | ((r & 0XFF00) << 8) | ((r & 0XFF0000) << 16) | ((r & 0xFF000000) << 24));
+				ix += 4;
+			} else {
+				return null;
+			}
+		}
+
+		int r = (chars.length & 7);
+
+		if (r > 0) {
+			switch (r) {
+			case 1: {
+				char c = (char) readByte();
+				if ((c >> 4) <= 7) {
+					chars[ix++] = c;
+				} else {
+					return null;
+				}
+				break;
+			}
+			case 2: {
+				int s = readShort();
+
+				if ((s & 0XFF) <= 0X7F && ((s >> 8) & 0XFF) <= 0X7F) {
+					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8));
+					ix += 2;
+				} else {
+					return null;
+				}
+				break;
+			}
+			case 3: {
+				int s = readShort();
+				char c;
+
+				if ((s & 0XFF) <= 0X7F && ((s >> 8) & 0XFF) <= 0X7F && ((c = (char) readByte())) <= 0X7F) {
+					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8));
+					ix += 2;
+					chars[ix++] = c;
+				} else {
+					return null;
+				}
+				break;
+			}
+			case 4: {
+				long s = readInt();
+
+				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F) {
+					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+					ix += 4;
+				} else {
+					return null;
+				}
+				break;
+			}
+			case 5: {
+				long s = readInt();
+				char c;
+
+				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F && ((c = (char) readByte()) >> 4) <= 7) {
+					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+					ix += 4;
+					chars[ix++] = c;
+				} else {
+					return null;
+				}
+
+				break;
+			}
+			case 6: {
+				long s = readInt();
+				int t;
+
+				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F //
+						&& ((t = readShort()) & 0xFF) <= 0X7F && ((t >> 8) & 0xFF) <= 0X7F) {
+
+					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+					ix += 4;
+					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (t & 0xFF) | ((t & 0XFF00) << 8));
+					ix += 2;
+					break;
+				}
+
+				return null;
+			}
+			case 7: {
+				long s = readInt();
+				int t;
+				char c;
+
+				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F //
+						&& ((t = readShort()) & 0xFF) <= 0X7F && ((t >> 8) & 0xFF) <= 0X7F //
+						&& (c = (char) readByte()) <= 0X7F) {
+
+					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+					ix += 4;
+					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (t & 0xFF) | ((t & 0XFF00) << 8));
+					ix += 2;
+					chars[ix++] = c;
+					break;
+				}
+
+				return null;
+			}
+			default:
+				break;
+			}
+		}
+
+		return chars;
+	}
+
 	@Override
 	public boolean readBoolean() {
 		return readByte() == 1;
@@ -414,34 +547,41 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	@Override
 	public String readUTF() {
-		final int charCount = readVarInt();
-		final char[] chars = new char[charCount];
-		int c, ix = 0;
-		while (ix < charCount) {
-			c = readByte() & 0xff;
+		final int len = readVarInt();
+		char[] chars = new char[len];
+		int pos = this.pos;
+		char[] r;
 
-			switch (c >> 4) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				chars[ix++] = (char) c;
-				break;
-			case 12:
-			case 13:
-				chars[ix++] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
-				break;
-			case 14:
-				chars[ix++] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
-				break;
-			default:// checkstyle
-				break;
+		if ((r = readAscii(chars)) != null) {
+			chars = r;
+		} else {
+			this.pos = pos;
+			int c, ix = 0;
+			while (ix < len) {
+				c = readByte() & 0xFF;
+
+				switch (c >> 4) {
+				case 0:
+				case 1:
+				case 2:
+				case 3:
+				case 4:
+				case 5:
+				case 6:
+				case 7:
+					chars[ix++] = (char) c;
+					break;
+				case 12:
+				case 13:
+					chars[ix++] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
+					break;
+				case 14:
+					chars[ix++] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
+					break;
+				default:// checkstyle
+					break;
+				}
 			}
-
 		}
 
 		String rv = Utils.allocateInstance(String.class);
