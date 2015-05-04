@@ -14,7 +14,7 @@ import domain.std.Person;
 /**
  * Shared base class for those serializers that operate on POJOs.
  */
-public abstract class StdMediaSerializer implements CheckingObjectSerializer<MediaContent> {
+public abstract class StdMediaSerializer extends CheckingObjectSerializer<MediaContent> {
 	public final static int FIELD_IX_MEDIA = 1;
 	public final static String FIELD_NAME_MEDIA = "md";
 	public final static int FIELD_IX_IMAGES = 2;

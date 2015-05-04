@@ -26,24 +26,33 @@ import java.util.TreeMap;
 @SuppressWarnings("restriction")
 public final class Bits {
 
+	private static long alignAddress(long base, int ps) {
+		long r = base & ps - 1;
+		if (r != 0) {
+			return base + ps - r;
+		}
+		return base;
+	}
+
+	private static long alignSize(long max, int sz) {
+		while ((max & sz - 1) != 0) {
+			max = Utils.nextPowerOfTwo(max);
+		}
+		return max;
+	}
+
 	public static synchronized long allocateMemory(long cap) {
-		int ps = U.pageSize();
+		// U.pageSize();
 
-		boolean pa = sun.misc.VM.isDirectMemoryPageAligned();
+		// boolean pa = sun.misc.VM.isDirectMemoryPageAligned();
 
-		long size = Math.max(1L, cap + (pa ? ps : 0));
+		long size = alignSize(cap + 16, 16);
 
 		long base = U.allocateMemory(size);
 
 		U.setMemory(base, size, (byte) 0);
 
-		long address;
-
-		if (pa && base % ps != 0) {
-			address = base + ps - (base & ps - 1);
-		} else {
-			address = base;
-		}
+		long address = alignAddress(base, 16);
 
 		if (address != base) {
 			ADDR_TO_UNALIGNED.put(address, base);
@@ -162,7 +171,7 @@ public final class Bits {
 	}
 
 	public static synchronized void freeMemory(long address) {
-		Long m = ADDR_TO_UNALIGNED == null ? address : ADDR_TO_UNALIGNED.remove(address);
+		Long m = ADDR_TO_UNALIGNED.remove(address);
 
 		long mem = m == null ? address : m;
 
@@ -175,7 +184,7 @@ public final class Bits {
 		int high = PLEN;
 
 		while (low <= high) {
-			int mid = (low + high) >>> 1;
+			int mid = low + high >>> 1;
 			int midVal = U.getInt(b + (mid << 2));
 
 			if (midVal < key) {
@@ -187,39 +196,29 @@ public final class Bits {
 			}
 		}
 
-		return U.getInt(b + ((low + 1) << 2));
+		return U.getInt(b + (low + 1 << 2));
 	}
 
-	public static long reallocateMemory(long base, long newLim) {
-		return U.reallocateMemory(base, newLim);
+	public static synchronized long reallocateMemory(long base, long newLim) {
+		Long m = ADDR_TO_UNALIGNED.remove(base);
+
+		long mem = m == null ? base : m;
+
+		mem = U.reallocateMemory(mem, newLim + 16);
+		long address = alignAddress(mem, 16);
+
+		if (address != mem) {
+			ADDR_TO_UNALIGNED.put(address, mem);
+		}
+
+		return address;
 	}
 
-	// public static void writeBitMask(Sink dst, boolean[] o) {
-	// int len = o.length;
-	// int loops = len >>> 6;
-	// int r = len & 63;
-	//
-	// dst.writeVarInt(loops + (r > 0 ? 1 : 0));
-	//
-	// int ix = 0;
-	// long fl;
-	//
-	// for (int i = 0; i < loops; i++) {
-	// fl = 0L;
-	// for (int j = 0; i < 64; j++) {
-	// fl |= (o[ix++] ? 1L : 0L) << j;
-	// }
-	// dst.writeLong(fl);
-	// }
-	//
-	// if (r > 0) {
-	// fl = 0L;
-	// for (int i = 0; i < r; i++) {
-	// fl |= (o[ix++] ? 1L : 0L) << i;
-	// }
-	// dst.writeLong(fl);
-	// }
-	// }
+	public static final boolean SSE4_1;
+
+	public static final boolean AVX2;
+
+	public static final int SSE_THRESHOLD = 128;
 
 	static final long PRIMES;
 
@@ -232,7 +231,7 @@ public final class Bits {
 	static final Map<Long, Long> ADDR_TO_UNALIGNED;
 
 	static {
-		ADDR_TO_UNALIGNED = sun.misc.VM.isDirectMemoryPageAligned() ? new TreeMap<>() : null;
+		ADDR_TO_UNALIGNED = new TreeMap<>();
 
 		try (InputStream is = Bits.class.getClassLoader().getResourceAsStream("primes.bin")) {
 			// available always works in this case
@@ -260,10 +259,17 @@ public final class Bits {
 			// copyFromByteArray(m, buff, 0, buff.length);
 
 			PRIMES = m;
-			PLEN = (av / 4) - 1;
+			PLEN = av / 4 - 1;
 		} catch (IOException e) {
 			throw new ExceptionInInitializerError(e);
 		}
+
+		String flags = Utils.execAndTrapOutput("/bin/sh", "-c", "cat /proc/cpuinfo | grep -m 1 flags");
+
+		SSE4_1 = flags.contains("sse4_1");
+
+		AVX2 = flags.contains("avx2");
+
 	}
 
 }

@@ -1,5 +1,6 @@
 package serializers.impl.gs.std;
 
+import java.text.MessageFormat;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -17,7 +18,7 @@ import domain.gs.std.Media.Player;
 import domain.gs.std.MediaContent;
 import domain.gs.std.Person;
 
-public class GSImpl implements CheckingObjectSerializer<MediaContent> {
+public class GSImpl extends CheckingObjectSerializer<MediaContent> {
 
 	static P borrow() {
 		return P;
@@ -45,16 +46,16 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 		assetEquals(2, list.size());
 
 		Image image = list.get(0);
-		assetEquals(image.getUri(), "http://javaone.com/keynote_large.jpg");
+		assetEquals(image.getUri(), ts.largeImageUrl());
 		assetEquals(image.getSize(), Size.LARGE);
-		assetEquals(image.getTitle(), "Javaone Keynote");
+		assetEquals(image.getTitle(), ts.tag());
 		assetEquals(image.getWidth(), 0);
 		assetEquals(image.getHeight(), 0);
 
 		image = list.get(1);
-		assetEquals(image.getUri(), "http://javaone.com/keynote_thumbnail.jpg");
+		assetEquals(image.getUri(), ts.smallImageUrl());
 		assetEquals(image.getSize(), Size.SMALL);
-		assetEquals(image.getTitle(), "Javaone Keynote");
+		assetEquals(image.getTitle(), ts.tag());
 		assetEquals(image.getWidth(), 0);
 		assetEquals(image.getHeight(), 0);
 
@@ -63,9 +64,9 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 	@Override
 	public void checkMediaField(MediaContent content) {
 		Media media = content.getMedia();
-		assetEquals(media.getUri(), "http://javaone.com/keynote.mpg");
+		assetEquals(media.getUri(), ts.mediaUrl());
 		assetEquals(media.getFormat(), "video/mpg4");
-		assetEquals(media.getTitle(), "Javaone Keynote");
+		assetEquals(media.getTitle(), ts.tag());
 		assetEquals(media.getDuration(), 1234567L);
 		assetEquals(media.getSize(), 123L);
 		assetEquals(media.getBitrate(), 0);
@@ -78,7 +79,7 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 		int c = 0;
 		for (Person person : list) {
 			String name = person.getName();
-			if (name.equals("Bill Gates") || name.equals("Steve Jobs")) {
+			if (name.equals(ts.firstPerson()) || name.equals(ts.secondPerson())) {
 				c++;
 			}
 		}
@@ -87,12 +88,12 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 
 	@Override
 	public MediaContent create() throws Exception {
-		Media media = new Media(null, "video/mpg4", Media.Player.JAVA, "Javaone Keynote", "http://javaone.com/keynote.mpg", 1234567, 123, 0, 0, 0);
-		media.addToPerson("Bill Gates");
-		media.addToPerson("Steve Jobs");
+		Media media = new Media(null, "video/mpg4", Media.Player.JAVA, ts.tag(), ts.mediaUrl(), 1234567, 123, 0, 0, 0);
+		media.addToPerson(ts.firstPerson());
+		media.addToPerson(ts.secondPerson());
 		MediaContent content = new MediaContent(media);
-		content.addImage(new Image(0, "Javaone Keynote", "http://javaone.com/keynote_large.jpg", 0, Image.Size.LARGE));
-		content.addImage(new Image(0, "Javaone Keynote", "http://javaone.com/keynote_thumbnail.jpg", 0, Image.Size.SMALL));
+		content.addImage(new Image(0, ts.tag(), ts.largeImageUrl(), 0, Image.Size.LARGE));
+		content.addImage(new Image(0, ts.tag(), ts.smallImageUrl(), 0, Image.Size.SMALL));
 		return content;
 	}
 
@@ -105,7 +106,7 @@ public class GSImpl implements CheckingObjectSerializer<MediaContent> {
 
 	@Override
 	public String getName() {
-		return "graph-ser";
+		return MessageFormat.format("graph-ser ({0})", ts.getClass().getSimpleName());
 	}
 
 	@Override

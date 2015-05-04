@@ -295,7 +295,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 	}
 
 	boolean writeAscii(char[] v) {
-		int l = (v.length << 1) >> 3;
+		int l = v.length << 1 >> 3;
 
 		long bytes = 0L;
 		int shift = 0;
@@ -305,7 +305,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 
 			int cs = 0;
 			for (int j = 0; j < 4; j++) {
-				char c = (char) (byte) (txt >> cs);
+				char c = (char) (txt >> cs);
 				cs += 16;
 
 				if (c <= 0x007F) {
@@ -313,7 +313,7 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 						writeLong(bytes);
 						bytes = shift = 0;
 					}
-					bytes |= ((long) ((byte) c)) << shift;
+					bytes |= (long) (byte) c << shift;
 					shift += 8;
 				} else {
 					return false;
@@ -326,17 +326,17 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 			bytes = shift = 0;
 		}
 
-		int r = (v.length << 1) & 7;
+		int r = v.length << 1 & 7;
 
 		if (r > 0) {
-			for (int i = (v.length >> 2) << 2; i < v.length; i++) {
+			for (int i = v.length >> 2 << 2; i < v.length; i++) {
 				char c = v[i];
 				if (c <= 0x007F) {
 					if (shift == 64) {
 						writeLong(bytes);
 						bytes = shift = 0;
 					}
-					bytes |= ((long) ((byte) c)) << shift;
+					bytes |= (long) (byte) c << shift;
 					shift += 8;
 				} else {
 					return false;
@@ -513,24 +513,43 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		int c;
 		writeVarInt(len);
 
-		int pos = this.pos;
+		int ix = 0;
 
-		if (!writeAscii(value)) {
-			this.pos = pos;
-			for (int i = 0; i < len; i++) {
-				c = value[i];
-				if (c <= 0x007F) {
-					writeByte((byte) c);
-				} else if (c > 0x07FF) {
-					writeByte((byte) (0xE0 | c >> 12 & 0x0F));
-					writeByte((byte) (0x80 | c >> 6 & 0x3F));
-					writeByte((byte) (0x80 | c >> 0 & 0x3F));
-				} else {
-					writeByte((byte) (0xC0 | c >> 6 & 0x1F));
-					writeByte((byte) (0x80 | c >> 0 & 0x3F));
-				}
+		// expand, if necessary, up to len
+		guard(len);
+
+		long b = base + pos;
+
+		while (ix < len) {
+			c = value[ix];
+			if (c > 0x007F) {
+				break;
 			}
+			ix++;
+			U.putByte(b++, (byte) c);
 		}
+
+		if (ix < len) {
+			pos = (int) (b - base);
+			// over-guard
+			guard((len - ix) * 3);
+			b = base + pos;
+			do {
+				c = value[ix++];
+				if (c <= 0x007F) {
+					U.putByte(b++, (byte) c);
+				} else if (c > 0x07FF) {
+					U.putByte(b++, (byte) (0xE0 | c >> 12 & 0x0F));
+					U.putByte(b++, (byte) (0x80 | c >> 6 & 0x3F));
+					U.putByte(b++, (byte) (0x80 | c >> 0 & 0x3F));
+				} else {
+					U.putByte(b++, (byte) (0xC0 | c >> 6 & 0x1F));
+					U.putByte(b++, (byte) (0x80 | c >> 0 & 0x3F));
+				}
+			} while (ix < len);
+		}
+
+		pos = (int) (b - base);
 	}
 
 	public void writeVarChar(char c) {

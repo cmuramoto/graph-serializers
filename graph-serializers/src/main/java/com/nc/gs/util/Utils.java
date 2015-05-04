@@ -1,17 +1,18 @@
 package com.nc.gs.util;
 
-import java.io.DataInput;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.nio.Buffer;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,6 +41,7 @@ import com.nc.gs.ds.Partition;
 import com.nc.gs.generator.ext.OfflineClassWriter;
 import com.nc.gs.interpreter.ExtendedType;
 import com.nc.gs.io.Sink;
+import com.nc.gs.log.Log;
 
 @SuppressWarnings("restriction")
 public class Utils {
@@ -130,6 +132,21 @@ public class Utils {
 		}
 	}
 
+	public static String allocateString(char[] value) {
+		String rv;
+		if (NO_COPY != null) {
+			try {
+				rv = NO_COPY.newInstance(value, Boolean.TRUE);
+			} catch (Throwable e) {
+				throw new RuntimeException(e);
+			}
+		} else {
+			rv = allocateInstance(String.class);
+			U.putObject(rv, Utils.V_OFF, value);
+		}
+		return rv;
+	}
+
 	public static long[] allOffsets(Class<?> c) {
 
 		long[] base = new long[0];
@@ -171,6 +188,43 @@ public class Utils {
 
 	public static boolean classExists(String fqn) {
 		return findClassWithCorrectName(fqnToResource(fqn)) != null;
+	}
+
+	public static String execAndTrapOutput(String... args) {
+		String ret = "";
+		try {
+			ProcessBuilder pb = new ProcessBuilder(args);
+			final Process p = pb.start();
+
+			final int s = p.waitFor();
+
+			if (s == 0) {
+				final StringBuilder sb = new StringBuilder();
+
+				try (InputStream is = p.getInputStream()) {
+					final byte[] b = new byte[1024];
+					int r;
+
+					while ((r = is.read(b)) > 0) {
+						sb.append(new String(b, 0, r));
+					}
+				}
+
+				ret = sb.toString();
+
+				// log.info("Result of {} : {}", command, ret);
+			} else {
+				p.destroy();
+			}
+
+		} catch (IOException | InterruptedException e) {
+			Log.warn("Pipe error when capturing state!", e);
+		} catch (final Throwable e) {
+			Log.warn("Process Execution Failed!!!", e);
+		}
+
+		return ret;
+
 	}
 
 	public static final long fieldOffset(Class<?> clazz, String name) {
@@ -327,6 +381,25 @@ public class Utils {
 		return sb.toString();
 	}
 
+	public static void loadLibrary(String resource) {
+		URL url = Objects.requireNonNull(Utils.class.getClassLoader().getResource(resource));
+
+		String file = url.getFile();
+
+		if (Files.exists(Paths.get(file))) {
+			System.load(file);
+		} else {
+			try (InputStream is = url.openStream()) {
+				Path p = Files.createTempFile("gs", "so");
+				Files.copy(is, p);
+				System.load(p.toAbsolutePath().toString());
+			} catch (IOException e) {
+				U.throwException(e);
+			}
+		}
+
+	}
+
 	public static int nextPowerOfTwo(int mem) {
 		return mem == 0 ? 1 : 1 << 32 - Integer.numberOfLeadingZeros(mem);
 	}
@@ -391,64 +464,12 @@ public class Utils {
 		return rv;
 	}
 
-	// public static String readString(final ByteBuffer src) {
-	// int len = unpackI(src);
-	// char[] v = new char[len];
-	//
-	// src.asCharBuffer().get(v, 0, len);
-	//
-	// src.position(src.position() + (len << 1));
-	//
-	// String rv = allocateInstance(String.class);
-	// U.putObject(rv, V_OFF, v);
-	//
-	// return rv;
-	// }
-
 	public static Class<?> primitive(String nameOrDesc) {
 		if (nameOrDesc.length() > 1) {
 			return null;
 		}
 
 		return primitive(nameOrDesc.charAt(0));
-	}
-
-	public static String readString(final ByteBuffer src) {
-		final int charCount = unpackI(src);
-		final char[] chars = new char[charCount];
-		int c, ix = 0;
-		while (ix < charCount) {
-			c = src.get() & 0xff;
-
-			switch (c >> 4) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				chars[ix++] = (char) c;
-				break;
-			case 12:
-			case 13:
-				chars[ix++] = (char) ((c & 0x1F) << 6 | src.get() & 0x3F);
-				break;
-			case 14:
-				chars[ix++] = (char) ((c & 0x0F) << 12 | (src.get() & 0x3F) << 6 | (src.get() & 0x3F) << 0);
-				break;
-			default:// checkstyle
-				break;
-			}
-
-		}
-
-		String rv = allocateInstance(String.class);
-		U.putObject(rv, V_OFF, chars);
-
-		// return new String(chars, 0, charCount);
-		return rv;
 	}
 
 	public static byte[] removeSyntheticModifier(byte[] bc) {
@@ -591,117 +612,6 @@ public class Utils {
 		}
 	}
 
-	public static char unpackC(ByteBuffer src) {
-		return src.getChar();
-	}
-
-	public static final double unpackD(ByteBuffer src) {
-		return src.getDouble();
-	}
-
-	public static float unpackF(ByteBuffer src) {
-		return Float.intBitsToFloat(unpackI(src));
-	}
-
-	public static final int unpackI(ByteBuffer src) {
-		int b = src.get();
-		int v = b & 0x7F;
-		if ((b & 0x80) != 0) {
-			b = src.get();
-			v |= (b & 0x7F) << 7;
-			if ((b & 0x80) != 0) {
-				b = src.get();
-				v |= (b & 0x7F) << 14;
-				if ((b & 0x80) != 0) {
-					b = src.get();
-					v |= (b & 0x7F) << 21;
-					if ((b & 0x80) != 0) {
-						b = src.get();
-						v |= (b & 0x7F) << 28;
-					}
-				}
-			}
-		}
-		return v;
-	}
-
-	public static int unpackI(final DataInput in) throws IOException {
-		int b = in.readByte();
-		int r = b & 0x7F;
-		if ((b & 0x80) != 0) {
-			b = in.readByte();
-			r |= (b & 0x7F) << 7;
-			if ((b & 0x80) != 0) {
-				b = in.readByte();
-				r |= (b & 0x7F) << 14;
-				if ((b & 0x80) != 0) {
-					b = in.readByte();
-					r |= (b & 0x7F) << 21;
-					if ((b & 0x80) != 0) {
-						b = in.readByte();
-						r |= (b & 0x7F) << 28;
-					}
-				}
-			}
-		}
-		return r;
-	}
-
-	public static final long unpackL(ByteBuffer src) {
-		int b = src.get();
-		long result = b & 0x7F;
-		if ((b & 0x80) != 0) {
-			b = src.get();
-			result |= (b & 0x7F) << 7;
-			if ((b & 0x80) != 0) {
-				b = src.get();
-				result |= (b & 0x7F) << 14;
-				if ((b & 0x80) != 0) {
-					b = src.get();
-					result |= (b & 0x7F) << 21;
-					if ((b & 0x80) != 0) {
-						b = src.get();
-						result |= (long) (b & 0x7F) << 28;
-						if ((b & 0x80) != 0) {
-							b = src.get();
-							result |= (long) (b & 0x7F) << 35;
-							if ((b & 0x80) != 0) {
-								b = src.get();
-								result |= (long) (b & 0x7F) << 42;
-								if ((b & 0x80) != 0) {
-									b = src.get();
-									result |= (long) (b & 0x7F) << 49;
-									if ((b & 0x80) != 0) {
-										b = src.get();
-										result |= (long) b << 56;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return result;
-	}
-
-	public static short unpackS(ByteBuffer src) {
-		final byte value = src.get();
-		if (value == -1) {
-			return src.getShort();
-		}
-		if (value < 0) {
-			return (short) (value + 256);
-		}
-
-		return value;
-	}
-
-	public static boolean unpackZ(ByteBuffer src) {
-		return src.get() == 1;
-	}
-
 	public static void writeASM(File ioBase, String string, byte[] bc) throws IOException {
 		File file = new File(ioBase, string);
 
@@ -741,6 +651,8 @@ public class Utils {
 
 	static final long ADDR_OFF;
 
+	static final Constructor<String> NO_COPY;
+
 	static {
 
 		try {
@@ -760,6 +672,19 @@ public class Utils {
 		EC_OFF = fieldOffset(Class.class, "enumConstants");
 		V_OFF = fieldOffset(String.class, "value");
 		ADDR_OFF = fieldOffset(Buffer.class, "address");
+
+		Constructor<String> c;
+		if (Boolean.getBoolean("nc.gs.string.ctor")) {
+			try {
+				c = String.class.getDeclaredConstructor(char[].class, boolean.class);
+				c.setAccessible(true);
+			} catch (Throwable e) {
+				c = null;
+			}
+		} else {
+			c = null;
+		}
+		NO_COPY = c;
 	}
 
 	public boolean isJavaType(String name) {

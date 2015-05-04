@@ -1,6 +1,7 @@
 package serializers.impl.protobuf;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.List;
 
 import serializers.spi.CheckingObjectSerializer;
@@ -11,7 +12,7 @@ import domain.protobuf.MediaContentHolder.Media.Player;
 import domain.protobuf.MediaContentHolder.MediaContent;
 import domain.protobuf.MediaContentHolder.Person;
 
-public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent> {
+public class ProtobufSerializer extends CheckingObjectSerializer<MediaContent> {
 
 	@Override
 	public void checkAllFields(MediaContent content) {
@@ -20,16 +21,16 @@ public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent
 		assetEquals(2, list.size());
 
 		Image image = list.get(0);
-		assetEquals(image.getUri(), "http://javaone.com/keynote_large.jpg");
+		assetEquals(image.getUri(), ts.largeImageUrl());
 		assetEquals(image.getSize(), Size.LARGE);
-		assetEquals(image.getTitle(), "Javaone Keynote");
+		assetEquals(image.getTitle(), ts.tag());
 		assetEquals(image.getWidth(), 0);
 		assetEquals(image.getHeight(), 0);
 
 		image = list.get(1);
-		assetEquals(image.getUri(), "http://javaone.com/keynote_thumbnail.jpg");
+		assetEquals(image.getUri(), ts.smallImageUrl());
 		assetEquals(image.getSize(), Size.SMALL);
-		assetEquals(image.getTitle(), "Javaone Keynote");
+		assetEquals(image.getTitle(), ts.tag());
 		assetEquals(image.getWidth(), 0);
 		assetEquals(image.getHeight(), 0);
 	}
@@ -37,9 +38,9 @@ public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent
 	@Override
 	public void checkMediaField(MediaContent content) {
 		Media media = content.getMedia();
-		assetEquals(media.getUri(), "http://javaone.com/keynote.mpg");
+		assetEquals(media.getUri(), ts.mediaUrl());
 		assetEquals(media.getFormat(), "video/mpg4");
-		assetEquals(media.getTitle(), "Javaone Keynote");
+		assetEquals(media.getTitle(), ts.tag());
 		assetEquals(media.getDuration(), 1234567L);
 		assetEquals(media.getSize(), 123L);
 		assetEquals(media.getBitrate(), 0);
@@ -52,7 +53,7 @@ public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent
 		int c = 0;
 		for (Person person : list) {
 			String name = person.getName();
-			if (name.equals("Bill Gates") || name.equals("Steve Jobs")) {
+			if (name.equals(ts.firstPerson()) || name.equals(ts.secondPerson())) {
 				c++;
 			}
 		}
@@ -61,9 +62,8 @@ public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent
 
 	@Override
 	public MediaContent create() {
-		MediaContent contentProto = MediaContent.newBuilder()
-				.setMedia(Media.newBuilder().clearCopyright().setFormat("video/mpg4").setPlayer(Player.JAVA).setTitle("Javaone Keynote").setUri("http://javaone.com/keynote.mpg").setDuration(1234567).setSize(123).setHeight(0).setWidth(0).setBitrate(0).addPerson(Person.newBuilder().setName("Bill Gates")).addPerson(Person.newBuilder().setName("Steve Jobs")).build())
-				.addImage(Image.newBuilder().setHeight(0).setTitle("Javaone Keynote").setUri("http://javaone.com/keynote_large.jpg").setWidth(0).setSize(Size.LARGE).build()).addImage(Image.newBuilder().setHeight(0).setTitle("Javaone Keynote").setUri("http://javaone.com/keynote_thumbnail.jpg").setWidth(0).setSize(Size.SMALL).build()).build();
+		MediaContent contentProto = MediaContent.newBuilder().setMedia(Media.newBuilder().clearCopyright().setFormat("video/mpg4").setPlayer(Player.JAVA).setTitle(ts.tag()).setUri(ts.mediaUrl()).setDuration(1234567).setSize(123).setHeight(0).setWidth(0).setBitrate(0).addPerson(Person.newBuilder().setName(ts.firstPerson())).addPerson(Person.newBuilder().setName(ts.secondPerson())).build())
+				.addImage(Image.newBuilder().setHeight(0).setTitle(ts.tag()).setUri(ts.largeImageUrl()).setWidth(0).setSize(Size.LARGE).build()).addImage(Image.newBuilder().setHeight(0).setTitle(ts.tag()).setUri(ts.smallImageUrl()).setWidth(0).setSize(Size.SMALL).build()).build();
 		return contentProto;
 	}
 
@@ -74,7 +74,7 @@ public class ProtobufSerializer implements CheckingObjectSerializer<MediaContent
 
 	@Override
 	public String getName() {
-		return "protobuf";
+		return MessageFormat.format("protobuf ({0})", ts.getClass().getSimpleName());
 	}
 
 	@Override

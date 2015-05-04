@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import serializers.TextSource;
 import serializers.impl.protobuf.ProtobufSerializer;
 import serializers.impl.thrift.ThriftSerializer;
 import serializers.spi.CheckingObjectSerializer;
@@ -31,14 +32,37 @@ public class BenchmarkRunner {
 		if (thrift) {
 			runner.addObjectSerializer(new ThriftSerializer());
 		}
+
 		// runner.addObjectSerializer(new JavaSerializer());
 
 		System.out.println("Starting");
 
-		int repeats = Integer.getInteger("benchmark.repeats.max", 5);
+		TextSource ts = TextSource.MIXED;
+
+		int repeats = Integer.getInteger("benchmark.repeats.max", 4);
+
+		System.out.println("Mixed");
+
 		for (int i = 1; i <= repeats; i++) {
 			runner.start(i, repeats);
+
+			for (ObjectSerializer ser : runner._serializers) {
+				((CheckingObjectSerializer<?>) ser).setTs(ts);
+			}
+			ts = ts == TextSource.MIXED ? TextSource.ASCII : TextSource.MIXED;
 		}
+
+		System.out.println("Pure Ascii");
+
+		for (int i = 1; i <= repeats; i++) {
+			runner.start(i, repeats);
+
+			// for (ObjectSerializer ser : runner._serializers) {
+			// ((CheckingObjectSerializer<?>) ser).setTs(ts);
+			// }
+			// ts = ts == TextSource.MIXED ? TextSource.ASCII : TextSource.MIXED;
+		}
+
 	}
 
 	public final static int ITERATIONS = 2000;
@@ -308,10 +332,11 @@ public class BenchmarkRunner {
 
 	// Update to better value only.
 	private void update(EnumMap<measurements, Map<String, Double>> values, measurements m, String name, double v) {
-		Double d = values.get(m).get(name);
+		Map<String, Double> map = values.get(m);
+		Double d = map.get(name);
 
 		if (d == null || d > v) {
-			values.get(m).put(name, v);
+			map.put(name, v);
 		}
 
 	}

@@ -21,6 +21,14 @@ import com.nc.gs.util.Utils;
 @SuppressWarnings("restriction")
 public final class Source extends InputStream implements Closeable, DataInput {
 
+	static final boolean isAsciiTuple(int s) {
+		return (s & 0XFF) <= 0X7F && (s >> 8 & 0XFF) <= 0X7F;
+	}
+
+	static final boolean isAsciiTuple(long l) {
+		return (l & 0xFF) <= 0X7F && (l >> 8 & 0xFF) <= 0X7F && (l >> 16 & 0xFF) <= 0X7F && (l >> 24 & 0xFF) <= 0X7F;
+	}
+
 	@SuppressWarnings("resource")
 	public static Source of(byte[] hb) {
 		return new Source(hb.length).filledWith(hb);
@@ -35,6 +43,14 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return new Source(Utils.address(bb), bb.capacity());
 	}
 
+	static final int zeroExtend(int t) {
+		return t & 0xFF | (t & 0XFF00) << 8;
+	}
+
+	static final long zeroExtend(long l) {
+		return l & 0xFF | (l & 0XFF00) << 8 | (l & 0XFF0000) << 16 | (l & 0xFF000000) << 24;
+	}
+
 	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
 
 	static final long ARRAY_CHAR_BASE_OFFSET = sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
@@ -46,6 +62,10 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	protected boolean disposable;
 
 	protected long base;
+
+	protected long utfBuffer;
+
+	protected int utfLen;
 
 	protected int pos;
 
@@ -226,6 +246,39 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		Bits.copyTo(advance(o.length << 1), o, 0, o.length);
 	}
 
+	public void inflateCharScalar(char[] chars) {
+		int ix = tryReadAscii(chars);
+
+		if (ix < chars.length) {
+			long p = base + pos;
+
+			int c;
+			Unsafe u = U;
+
+			do {
+				guard(1);
+				c = u.getByte(p++) & 0xFF;
+
+				if (c <= 0x7F) {
+					chars[ix++] = (char) c;
+				} else if (c >> 4 < 14) {
+					guard(1);
+					chars[ix++] = (char) ((c & 0x1F) << 6 | u.getByte(p++) & 0x3F);
+				} else {
+					guard(2);
+					chars[ix++] = (char) ((c & 0x0F) << 12 | (u.getByte(p++) & 0x3F) << 6 | (u.getByte(p++) & 0x3F) << 0);
+				}
+			} while (ix < chars.length);
+
+			pos = (int) (p - base);
+		}
+
+	}
+
+	public void inflateCharSSE(char[] chars) {
+		pos = (int) (UTF8Util.utf8ToArray(base + pos, chars) - base);
+	}
+
 	public void inflatePrimiteArray(int k, Object o) {
 		switch (k) {
 		case Type.BOOLEAN:
@@ -310,50 +363,53 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	// TODO - Bounds checking
-	private char[] readAscii(char[] chars) {
-		int len = (chars.length) >> 3;
-
+	int readAsciiVec(char[] chars) {
 		int ix = 0;
+		Unsafe u = U;
+		int len = chars.length >> 3;
+
+		int dp = 0;
 
 		for (int i = 0; i < len; i++) {
 			long txt = readLong();
 
-			long l, r;
+			long r;
 
-			if (((l = txt & 0xFFFFFFFFL) & 0xFF) <= 0X7F && ((l >> 8) & 0xFF) <= 0X7F && ((l >> 16) & 0xFF) <= 0X7F && ((l >> 24) & 0xFF) <= 0X7F //
-					&& //
-					(((r = txt >> 0X20) & 0xFFFFFFFFL) & 0xFF) <= 0X7F && ((r >> 8) & 0xFF) <= 0X7F && ((r >> 16) & 0xFF) <= 0X7F && ((r >> 24) & 0xFF) <= 0X7F //
-			) {
-				U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (l & 0xFF) | ((l & 0XFF00) << 8) | ((l & 0XFF0000) << 16) | ((l & 0xFF000000) << 24));
+			if (isAsciiTuple(r = txt & 0xFFFFFFFFL)) {
+				u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(r));
 				ix += 4;
-				U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (r & 0xFF) | ((r & 0XFF00) << 8) | ((r & 0XFF0000) << 16) | ((r & 0xFF000000) << 24));
-				ix += 4;
+				if (isAsciiTuple(r = txt >> 32)) {
+					u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(r));
+					ix += 4;
+				} else {
+					dp = 4;
+					break;
+				}
 			} else {
-				return null;
+				dp = 8;
+				break;
 			}
 		}
 
-		int r = (chars.length & 7);
-
-		if (r > 0) {
-			switch (r) {
+		if (dp == 0) {
+			switch (chars.length & 7) {
 			case 1: {
 				char c = (char) readByte();
-				if ((c >> 4) <= 7) {
+				if (c <= 0X7F) {
 					chars[ix++] = c;
 				} else {
-					return null;
+					dp = 1;
 				}
 				break;
 			}
 			case 2: {
 				int s = readShort();
 
-				if ((s & 0XFF) <= 0X7F && ((s >> 8) & 0XFF) <= 0X7F) {
-					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8));
+				if (isAsciiTuple(s)) {
+					u.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 2;
 				} else {
-					return null;
+					dp = 2;
 				}
 				break;
 			}
@@ -361,23 +417,27 @@ public final class Source extends InputStream implements Closeable, DataInput {
 				int s = readShort();
 				char c;
 
-				if ((s & 0XFF) <= 0X7F && ((s >> 8) & 0XFF) <= 0X7F && ((c = (char) readByte())) <= 0X7F) {
-					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8));
+				if (isAsciiTuple(s)) {
+					u.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 2;
-					chars[ix++] = c;
+					if ((c = (char) readByte()) <= 0X7F) {
+						chars[ix++] = c;
+					} else {
+						dp = 1;
+					}
 				} else {
-					return null;
+					dp = 2;
 				}
 				break;
 			}
 			case 4: {
 				long s = readInt();
 
-				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F) {
-					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+				if (isAsciiTuple(s)) {
+					u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 4;
 				} else {
-					return null;
+					dp = 4;
 				}
 				break;
 			}
@@ -385,12 +445,16 @@ public final class Source extends InputStream implements Closeable, DataInput {
 				long s = readInt();
 				char c;
 
-				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F && ((c = (char) readByte()) >> 4) <= 7) {
-					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+				if (isAsciiTuple(s)) {
+					u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 4;
-					chars[ix++] = c;
+					if ((c = (char) readByte()) <= 0x7F) {
+						chars[ix++] = c;
+					} else {
+						dp = 1;
+					}
 				} else {
-					return null;
+					dp = 4;
 				}
 
 				break;
@@ -399,43 +463,52 @@ public final class Source extends InputStream implements Closeable, DataInput {
 				long s = readInt();
 				int t;
 
-				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F //
-						&& ((t = readShort()) & 0xFF) <= 0X7F && ((t >> 8) & 0xFF) <= 0X7F) {
-
-					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+				if (isAsciiTuple(s)) {
+					u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 4;
-					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (t & 0xFF) | ((t & 0XFF00) << 8));
-					ix += 2;
-					break;
+					if (isAsciiTuple(t = readShort())) {
+						u.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(t));
+						ix += 2;
+					} else {
+						dp = 2;
+					}
+				} else {
+					dp = 4;
 				}
 
-				return null;
+				break;
 			}
 			case 7: {
 				long s = readInt();
 				int t;
 				char c;
 
-				if ((s & 0xFF) <= 0X7F && ((s >> 8) & 0xFF) <= 0X7F && ((s >> 16) & 0xFF) <= 0X7F && ((s >> 24) & 0xFF) <= 0X7F //
-						&& ((t = readShort()) & 0xFF) <= 0X7F && ((t >> 8) & 0xFF) <= 0X7F //
-						&& (c = (char) readByte()) <= 0X7F) {
-
-					U.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (s & 0xFF) | ((s & 0XFF00) << 8) | ((s & 0XFF0000) << 16) | ((s & 0xFF000000) << 24));
+				if (isAsciiTuple(s)) {
+					u.putLong(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(s));
 					ix += 4;
-					U.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), (t & 0xFF) | ((t & 0XFF00) << 8));
-					ix += 2;
-					chars[ix++] = c;
-					break;
+					if (isAsciiTuple(t = readShort())) { //
+						u.putInt(chars, ARRAY_CHAR_BASE_OFFSET + (ix << 1), zeroExtend(t));
+						ix += 2;
+						if ((c = (char) readByte()) <= 0X7F) {
+							chars[ix++] = c;
+						} else {
+							dp = 1;
+						}
+					} else {
+						dp = 2;
+					}
+				} else {
+					dp = 4;
 				}
 
-				return null;
 			}
 			default:
 				break;
 			}
 		}
 
-		return chars;
+		pos -= dp;
+		return ix;
 	}
 
 	@Override
@@ -458,10 +531,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		char[] dst = new char[len];
 		Bits.copyTo(advance(len << 1), dst, 0, len);
 
-		String rv = Utils.allocateInstance(String.class);
-		U.putObject(rv, Utils.V_OFF, dst);
-
-		return rv;
+		return Utils.allocateString(dst);
 	}
 
 	@Override
@@ -549,45 +619,14 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	public String readUTF() {
 		final int len = readVarInt();
 		char[] chars = new char[len];
-		int pos = this.pos;
-		char[] r;
 
-		if ((r = readAscii(chars)) != null) {
-			chars = r;
+		if (Bits.SSE4_1 && len >= Bits.SSE_THRESHOLD) {
+			inflateCharSSE(chars);
 		} else {
-			this.pos = pos;
-			int c, ix = 0;
-			while (ix < len) {
-				c = readByte() & 0xFF;
-
-				switch (c >> 4) {
-				case 0:
-				case 1:
-				case 2:
-				case 3:
-				case 4:
-				case 5:
-				case 6:
-				case 7:
-					chars[ix++] = (char) c;
-					break;
-				case 12:
-				case 13:
-					chars[ix++] = (char) ((c & 0x1F) << 6 | readByte() & 0x3F);
-					break;
-				case 14:
-					chars[ix++] = (char) ((c & 0x0F) << 12 | (readByte() & 0x3F) << 6 | (readByte() & 0x3F) << 0);
-					break;
-				default:// checkstyle
-					break;
-				}
-			}
+			inflateCharScalar(chars);
 		}
 
-		String rv = Utils.allocateInstance(String.class);
-		U.putObject(rv, Utils.V_OFF, chars);
-
-		return rv;
+		return Utils.allocateString(chars);
 	}
 
 	// protobuf impl
@@ -834,5 +873,35 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	@Override
 	public int skipBytes(int n) throws IOException {
 		return (int) skip(n);
+	}
+
+	int tryReadAscii(char[] dst) {
+		int ix = 0;
+		guard(dst.length);
+		long p = base + pos;
+
+		int c;
+		Unsafe u = U;
+
+		// This loop is aggressively optimized by the JIT.
+		while (ix < dst.length) {
+			c = u.getByte(p) & 0xFF;
+			if (c > 0X7F) {
+				break;
+			}
+			p++;
+			dst[ix++] = (char) c;
+		}
+
+		pos = (int) (p - base);
+
+		return ix;
+	}
+
+	public long utfBuffer(int len) {
+		if (len > utfLen) {
+			utfBuffer = utfBuffer == 0 ? Bits.allocateMemory(len) : Bits.reallocateMemory(utfBuffer, len);
+		}
+		return utfBuffer;
 	}
 }

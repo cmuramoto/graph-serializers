@@ -1,25 +1,39 @@
 package serializers.spi;
 
-public interface CheckingObjectSerializer<T> extends ObjectSerializer<T> {
-	default void assetEquals(int expected, int actual) {
+import serializers.TextSource;
+
+public abstract class CheckingObjectSerializer<T> implements ObjectSerializer<T> {
+
+	protected TextSource ts = TextSource.ASCII;
+
+	public final void assetEquals(int expected, int actual) {
 		if (expected != actual) {
 			throw new RuntimeException("" + expected + "!=" + actual);
 		}
 	}
 
-	default void assetEquals(long expected, long actual) {
+	public final void assetEquals(long expected, long actual) {
 		if (expected != actual) {
 			throw new RuntimeException("" + expected + "!=" + actual);
 		}
 	}
 
-	default void assetEquals(Object expected, Object actual) {
+	public final void assetEquals(Object expected, Object actual) {
 		if (!expected.equals(actual)) {
 			throw new RuntimeException("" + expected + "!=" + actual);
 		}
 	}
 
-	public void checkAllFields(T obj);
+	public abstract void checkAllFields(T obj);
 
-	public void checkMediaField(T obj);
+	public abstract void checkMediaField(T obj);
+
+	public TextSource getTs() {
+		return ts;
+	}
+
+	public void setTs(TextSource ts) {
+		this.ts = ts;
+	}
+
 }
