@@ -3,14 +3,35 @@ package com.nc.gs.tests.compress;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.nc.gs.io.Sink;
 import com.nc.gs.io.Source;
+import com.nc.gs.io.UTF8Util;
 
 public class BenchUTFNative {
 
+	public static String decodeFlags(long flags) {
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("[\n");
+		sb.append("\tForce SSE Alignment: ").append((flags & 0x1) != 0).append(", \n");
+		sb.append("\tForce AVX2 Alignment: ").append((flags & 0x2) != 0).append(", \n");
+		sb.append("\tForce AVX512 Alignment: ").append((flags & 0x2) != 0).append(", \n");
+		sb.append("\tTry Aligned Stores: ").append((flags & 0x8) != 0);
+		sb.append("\n]");
+
+		return sb.toString();
+	}
+
+	@BeforeClass
+	public static void init() {
+		System.out.println("Compilation Flags: \n" + decodeFlags(UTF8Util.compilationFlags()));
+	}
+
 	private static final int INNER_LOOPS = 10000;
+
 	static int[] BLOCK_LENS = { 17, 37, 113, 517, 1037 };
 
 	void doGc() {
@@ -33,6 +54,7 @@ public class BenchUTFNative {
 
 	@Test
 	public void run() {
+
 		try (Sink s = new Sink()) {
 
 			for (int bl : BLOCK_LENS) {
@@ -53,7 +75,6 @@ public class BenchUTFNative {
 				System.out.println("---------------------------");
 			}
 		}
-
 	}
 
 	private boolean run(Source source, String v) {
@@ -86,7 +107,7 @@ public class BenchUTFNative {
 			source.reset();
 			source.readVarInt();
 			long start = System.nanoTime();
-			source.inflateCharAVX(buff);
+			source.inflateCharSSE(buff);
 			sse += System.nanoTime() - start;
 		}
 
@@ -100,7 +121,7 @@ public class BenchUTFNative {
 			scalar += System.nanoTime() - start;
 		}
 
-		System.out.printf("SSE: %d. Scalar: %d. SSE improvement? %s. Δ: %d. Ratio: %.2f Len: %d\n", sse, scalar, scalar > sse, scalar - sse, (double) scalar / sse, v.length());
+		System.out.printf("SSE:\t%d\t Scalar:\t%d\t SSE improvement?\t%s\t Δ:\t%d\t Ratio: \t%.2f\t Len: \t%d\n", sse, scalar, scalar > sse, scalar - sse, (double) scalar / sse, v.length());
 
 		return scalar > sse;
 	}

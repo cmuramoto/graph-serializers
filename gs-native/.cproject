@@ -40,7 +40,7 @@
 									<listOptionValue builtIn="false" value="/opt/tools/java/latest/include/linux"/>
 									<listOptionValue builtIn="false" value="/opt/tools/java/latest/include"/>
 								</option>
-								<option id="gnu.c.compiler.option.misc.other.1975659094" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-msse4.1 -mavx2 -c -fmessage-length=0" valueType="string"/>
+								<option id="gnu.c.compiler.option.misc.other.1975659094" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-Wunused-label -c -msse4.1 -mavx2 -fmessage-length=0" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1623642259" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.so.debug.2091003459" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.debug">
@@ -100,7 +100,7 @@
 									<listOptionValue builtIn="false" value="/opt/tools/java/latest/include/linux"/>
 									<listOptionValue builtIn="false" value="/opt/tools/java/latest/include"/>
 								</option>
-								<option id="gnu.c.compiler.option.misc.other.204430725" superClass="gnu.c.compiler.option.misc.other" value="-c -msse4.1 -mavx2 -fmessage-length=0" valueType="string"/>
+								<option id="gnu.c.compiler.option.misc.other.204430725" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-Wunused-label -c -msse4.1 -mavx2 -fmessage-length=0" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1964320194" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.so.release.1211911778" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.so.release">

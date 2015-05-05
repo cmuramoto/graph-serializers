@@ -40,6 +40,9 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress
   (JNIEnv *, jclass, jlong, jlong, jint);
 
+JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_compilationFlags
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

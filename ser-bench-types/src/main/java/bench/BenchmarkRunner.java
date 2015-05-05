@@ -37,7 +37,7 @@ public class BenchmarkRunner {
 
 		System.out.println("Starting");
 
-		TextSource[] mix = { TextSource.MIXED, TextSource.ASCII, TextSource.LARGE_ASCII };
+		TextSource[] mix = { TextSource.LARGE_ASCII, TextSource.MIXED, TextSource.ASCII };
 
 		int repeats = Integer.getInteger("benchmark.repeats.max", 4);
 

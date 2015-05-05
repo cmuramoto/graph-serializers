@@ -5,6 +5,8 @@ import com.nc.gs.util.Utils;
 
 public final class UTF8Util {
 
+	public static native long compilationFlags();
+
 	/**
 	 * Same as {@link UTF8Util#utf8ToArray(long, char[])}, but unpacking from address-to address.
 	 *
