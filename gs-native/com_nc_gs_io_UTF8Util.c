@@ -182,7 +182,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 		A++; \
 	} \
 	\
-	while (len >= 16) { \
+	while (len >= CHUNK) { \
 		VEC chunk = LOAD((VEC * ) src); \
 		\
 		if (CM(chunk)) { \
@@ -247,7 +247,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX(JNIEnv* env,
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512(JNIEnv* env,
 		jclass clazz, jlong address, jcharArray target) {
 	jlong rv;
-	vectorUtf8ToUtf16(env, address, target, 64, vec64, loadVec64, storeVec64,
+	vectorUtf8ToUtf16(env, address, target, GS_AVX512_CHUNK, vec64, loadVec64, storeVec64,
 			computeMaskU64, zeroExtendLow32, zeroExtendHigh32, rv);
 	return rv;
 }
