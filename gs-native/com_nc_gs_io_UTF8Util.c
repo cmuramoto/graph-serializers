@@ -191,11 +191,11 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 		\
 		STORE((VEC * ) dst, ZEL(chunk)); \
 		\
-		STORE((vec16 * ) (dst + 8), ZEH(chunk)); \
+		STORE((VEC * ) (dst + (CHUNK/2)), ZEH(chunk)); \
 		\
-		dst += 16; \
-		src += 16; \
-		len -= 16; \
+		dst += CHUNK; \
+		src += CHUNK; \
+		len -= CHUNK; \
 	} \
 	\
 	deopt: while (len > 0) { \
