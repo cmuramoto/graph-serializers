@@ -11,7 +11,7 @@ import com.nc.gs.io.Source;
 public class BenchUTFNative {
 
 	private static final int INNER_LOOPS = 10000;
-	static int[] BLOCK_LENS = { 11, 37, 113, 517, 1037 };
+	static int[] BLOCK_LENS = { 17, 37, 113, 517, 1037 };
 
 	void doGc() {
 		System.gc();
@@ -63,7 +63,7 @@ public class BenchUTFNative {
 
 		source.reset();
 		source.readVarInt();
-		source.inflateCharSSE(buff);
+		source.inflateCharAVX(buff);
 		Assert.assertEquals(v, new String(buff));
 
 		for (int i = 0; i < 100000; i++) {
@@ -75,7 +75,7 @@ public class BenchUTFNative {
 		for (int i = 0; i < 100000; i++) {
 			source.reset();
 			source.readVarInt();
-			source.inflateCharSSE(buff);
+			source.inflateCharAVX(buff);
 		}
 
 		doGc();
@@ -86,7 +86,7 @@ public class BenchUTFNative {
 			source.reset();
 			source.readVarInt();
 			long start = System.nanoTime();
-			source.inflateCharSSE(buff);
+			source.inflateCharAVX(buff);
 			sse += System.nanoTime() - start;
 		}
 
@@ -102,11 +102,6 @@ public class BenchUTFNative {
 
 		System.out.printf("SSE: %d. Scalar: %d. SSE improvement? %s. Δ: %d. Ratio: %.2f Len: %d\n", sse, scalar, scalar > sse, scalar - sse, (double) scalar / sse, v.length());
 
-		if (scalar > sse) {
-
-			return true;
-		}
-
-		return false;
+		return scalar > sse;
 	}
 }

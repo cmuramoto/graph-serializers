@@ -10,7 +10,23 @@ extern "C" {
 #endif
 /*
  * Class:     com_nc_gs_io_UTF8Util
- * Method:    tryUnpackAscii
+ * Method:    utf8ToArrayAVX
+ * Signature: (J[C)I
+ */
+JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX
+  (JNIEnv *, jclass, jlong, jcharArray);
+
+/*
+ * Class:     com_nc_gs_io_UTF8Util
+ * Method:    utf8ToArrayAVX
+ * Signature: (J[C)I
+ */
+JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512
+  (JNIEnv *, jclass, jlong, jcharArray);
+
+/*
+ * Class:     com_nc_gs_io_UTF8Util
+ * Method:    utf8ToArray
  * Signature: (J[C)I
  */
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray
@@ -18,7 +34,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray
 
 /*
  * Class:     com_nc_gs_io_UTF8Util
- * Method:    utf8ToUtf16Raw
+ * Method:    utf8ToAddress
  * Signature: (JJI)I
  */
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress

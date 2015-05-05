@@ -105,6 +105,8 @@ public interface TextSource {
 
 	TextSource MIXED = new Mixed();
 
+	TextSource LARGE_ASCII = new LargeAscii();
+
 	String firstPerson();
 
 	String largeImageUrl();

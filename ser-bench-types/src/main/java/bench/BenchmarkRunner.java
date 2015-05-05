@@ -37,19 +37,20 @@ public class BenchmarkRunner {
 
 		System.out.println("Starting");
 
-		TextSource ts = TextSource.MIXED;
+		TextSource[] mix = { TextSource.MIXED, TextSource.ASCII, TextSource.LARGE_ASCII };
 
 		int repeats = Integer.getInteger("benchmark.repeats.max", 4);
 
 		System.out.println("Mixed");
 
-		for (int i = 1; i <= repeats; i++) {
-			runner.start(i, repeats);
-
+		for (TextSource ts : mix) {
 			for (ObjectSerializer ser : runner._serializers) {
 				((CheckingObjectSerializer<?>) ser).setTs(ts);
 			}
-			ts = ts == TextSource.MIXED ? TextSource.ASCII : TextSource.MIXED;
+			for (int i = 1; i <= repeats; i++) {
+				runner.start(i, repeats);
+			}
+
 		}
 
 		System.out.println("Pure Ascii");

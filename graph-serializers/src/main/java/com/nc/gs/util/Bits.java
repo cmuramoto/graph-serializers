@@ -214,11 +214,11 @@ public final class Bits {
 		return address;
 	}
 
-	public static final boolean SSE4_1;
+	public static final boolean SSE3;
 
 	public static final boolean AVX2;
 
-	public static final int SSE_THRESHOLD = 128;
+	public static final int JNI_UTF_VECTOR_THRESHOLD = 128;
 
 	static final long PRIMES;
 
@@ -266,8 +266,13 @@ public final class Bits {
 
 		String flags = Utils.execAndTrapOutput("/bin/sh", "-c", "cat /proc/cpuinfo | grep -m 1 flags");
 
-		SSE4_1 = flags.contains("sse4_1");
+		// SSE2:
+		// [_mm_loadu_si128,_mm_storeu_si128,_mm_movemask_epi8,_mm_unpacklo_epi8,_mm_unpackhi_epi8]
+		// SSE3 is required for: [_mm_lddqu_si128]
+		SSE3 = flags.contains("sse3");
 
+		// AVX: [_mm256_loadu_si256,_mm256_lddqu_si256,_mm256_storeu_si256]
+		// AVX2 is required for: [_mm256_movemask_epi8,_mm256_unpackhi_epi8,_mm256_unpackhi_epi8]
 		AVX2 = flags.contains("avx2");
 
 	}
