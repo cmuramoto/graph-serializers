@@ -1,33 +1,81 @@
 #include "com_nc_gs_io_UTF8Util.h"
-#include <emmintrin.h>
-#include <smmintrin.h>
 #include <limits.h>
+#include <x86intrin.h>
 
 #define GS_FORCE_SSE_ALIGNMENT 0x1
 #define GS_FORCE_AVX2_ALIGNMENT 0x2
 #define GS_FORCE_AVX512_ALIGNMENT 0x4
-#define GS_TRY_ALIGNED_STORES 0
+#define GS_TRY_ALIGNED_STORES 0//0x8
 
-#ifdef GS_AVX2
-#include <immintrin.h>
+#if defined(__GS__AVX512__)
+
+typedef __m512i vec;
+
+#define GS_CHUNK_SIZE 64
+#define GS_FORCE_ALIGNMENT GS_FORCE_AVX512_ALIGNMENT
+
+#ifdef GS_FORCE_AVX512_ALIGNMENT
+#define loadVec _mm512_load_si512
+#else
+#define loadVec _mm512_loadu_si512
 #endif
 
-#ifdef GS_AVX512
-#include <zmmintrin.h>
+#define storeVecU _mm512_storeu_si512
+#define storeVecA _mm512_store_si512
+#define computeMaskU _mm512_movepi8_mask
+#define zeroExtendLow(chunk) _mm512_unpacklo_epi8(chunk,_mm512_set1_epi8(0))
+#define zeroExtendHigh(chunk) _mm512_unpackhi_epi8(chunk,_mm512_set1_epi8(0))
+
+#elif defined(__GS__AVX2__)
+
+typedef __m256i vec;
+
+#define GS_CHUNK_SIZE 32
+#define GS_FORCE_ALIGNMENT GS_FORCE_AVX2_ALIGNMENT
+
+#ifdef GS_FORCE_AVX2_ALIGNMENT
+#define loadVec _mm256_loadu_si256
+#else
+#define loadVec _mm256_loadu_si256
+#endif
+
+#define storeVecU _mm256_storeu_si256
+#define storeVecA _mm256_store_si256
+#define computeMaskU _mm256_movemask_epi8
+#define zeroExtendLow(chunk) _mm256_unpacklo_epi8(chunk,_mm256_set1_epi8(0))
+#define zeroExtendHigh(chunk) _mm256_unpackhi_epi8(chunk,_mm256_set1_epi8(0))
+
+#else /*SSE*/
+
+#define GS_CHUNK_SIZE 16
+#define GS_FORCE_ALIGNMENT GS_FORCE_SSE_ALIGNMENT
+
+#ifdef GS_FORCE_SSE_ALIGNMENT
+#define loadVec _mm_load_si128
+#else
+#define loadVec _mm_loadu_si128
+#endif
+
+typedef __m128i vec;
+
+#define storeVecU _mm_storeu_si128
+#define storeVecA _mm_store_si128
+#define computeMaskU _mm_movemask_epi8
+#define zeroExtendLow(chunk) _mm_unpacklo_epi8(chunk,_mm_set1_epi8(0))
+#define zeroExtendHigh(chunk) _mm_unpackhi_epi8(chunk,_mm_set1_epi8(0))
+
 #endif
 
 //SSE Mnemonics
 #define GS_SSE_CHUNK 16
 
-typedef __m128i vec16;
-
 #ifdef GS_FORCE_SSE_ALIGNMENT
 #define loadVec16 _mm_load_si128
 #else
 #define loadVec16 _mm_loadu_si128
-//#define loadVec16 _mm_lddqu_si128
 #endif
 
+typedef __m128i vec16;
 #define storeVec16U _mm_storeu_si128
 #define storeVec16A _mm_store_si128
 #define computeMaskU16 _mm_movemask_epi8
@@ -42,7 +90,7 @@ typedef __m256i vec32;
 #define GS_AVX2_CHUNK 32
 
 #ifdef GS_FORCE_AVX2_ALIGNMENT
-#define loadVec32 _mm256_load_si256
+#define loadVec32 _mm256_loadu_si256
 #else
 #define loadVec32 _mm256_loadu_si256
 //#define loadVec32(src) _mm256_lddqu_si256(src)
@@ -124,21 +172,21 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 	char* src = (char*) srcAddr;
 	unsigned short* dst = (unsigned short*) dstAddr;
 
-	while (lim >= 16) {
-		vec16 chunk = loadVec16((vec16 *) src);
+	while (lim >= GS_CHUNK_SIZE) {
+		vec chunk = loadVec((vec *) src);
 
-		if (_mm_movemask_epi8(chunk)) {
+		if (computeMaskU(chunk)) {
 			break;
 		}
 
-		storeVec16U((vec16 *) dst, zeroExtendLow8(chunk));
+		storeVecU((vec *) dst, zeroExtendLow(chunk));
 
-		storeVec16U((vec16 *) (dst + 8), zeroExtendHigh8(chunk));
+		storeVecU((vec *) (dst + GS_CHUNK_SIZE / 2), zeroExtendHigh(chunk));
 
 		// Advance
-		dst += 16;
-		src += 16;
-		lim -= 16;
+		dst += GS_CHUNK_SIZE;
+		src += GS_CHUNK_SIZE;
+		lim -= GS_CHUNK_SIZE;
 	}
 
 	unsigned short c;
@@ -301,29 +349,39 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray(JNIEnv* env,
 		jclass clazz, jlong address, jcharArray target) {
 	jlong rv;
-	vectorUtf8ToUtf16(env, address, target, GS_SSE_CHUNK, vec16, loadVec16,
-			storeVec16U, storeVec16A, computeMaskU16, zeroExtendLow8,
-			zeroExtendHigh8, GS_FORCE_SSE_ALIGNMENT, rv);
+
+	vectorUtf8ToUtf16(env, address, target, GS_CHUNK_SIZE, vec, loadVec,
+			storeVecU, storeVecA, computeMaskU, zeroExtendLow,
+			zeroExtendHigh, GS_FORCE_ALIGNMENT, rv);
 	return rv;
 }
 
-JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX(JNIEnv* env,
-		jclass clazz, jlong address, jcharArray target) {
-	jlong rv;
-	vectorUtf8ToUtf16(env, address, target, GS_AVX2_CHUNK, vec32, loadVec32,
-			storeVec32U, storeVec32A, computeMaskU32, zeroExtendLow16,
-			zeroExtendHigh16, GS_FORCE_AVX2_ALIGNMENT, rv);
-	return rv;
-}
-
-JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512(
-		JNIEnv* env, jclass clazz, jlong address, jcharArray target) {
-	jlong rv;
-	vectorUtf8ToUtf16(env, address, target, GS_AVX512_CHUNK, vec64, loadVec64,
-			storeVec64U, storeVec64A, computeMaskU64, zeroExtendLow32,
-			zeroExtendHigh32, GS_FORCE_AVX512_ALIGNMENT, rv);
-	return rv;
-}
+//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArraySSE(JNIEnv* env,
+//		jclass clazz, jlong address, jcharArray target) {
+//	jlong rv;
+//	vectorUtf8ToUtf16(env, address, target, GS_SSE_CHUNK, vec16, loadVec16,
+//			storeVec16U, storeVec16A, computeMaskU16, zeroExtendLow8,
+//			zeroExtendHigh8, GS_FORCE_SSE_ALIGNMENT, rv);
+//	return rv;
+//}
+//
+//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX(JNIEnv* env,
+//		jclass clazz, jlong address, jcharArray target) {
+//	jlong rv;
+//	vectorUtf8ToUtf16(env, address, target, GS_AVX2_CHUNK, vec32, loadVec32,
+//			storeVec32U, storeVec32A, computeMaskU32, zeroExtendLow16,
+//			zeroExtendHigh16, GS_FORCE_AVX2_ALIGNMENT, rv);
+//	return rv;
+//}
+//
+//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512(
+//		JNIEnv* env, jclass clazz, jlong address, jcharArray target) {
+//	jlong rv;
+//	vectorUtf8ToUtf16(env, address, target, GS_AVX512_CHUNK, vec64, loadVec64,
+//			storeVec64U, storeVec64A, computeMaskU64, zeroExtendLow32,
+//			zeroExtendHigh32, GS_FORCE_AVX512_ALIGNMENT, rv);
+//	return rv;
+//}
 
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_compilationFlags(JNIEnv* env,
 		jclass ignore) {

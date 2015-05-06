@@ -246,10 +246,6 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		Bits.copyTo(advance(o.length << 1), o, 0, o.length);
 	}
 
-	public void inflateCharAVX(char[] chars) {
-		pos = (int) (UTF8Util.utf8ToArrayAVX(base + pos, chars) - base);
-	}
-
 	public void inflateCharScalar(char[] chars) {
 		int ix = tryReadAscii(chars);
 
@@ -279,7 +275,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 
 	}
 
-	public void inflateCharSSE(char[] chars) {
+	public void inflateCharSIMD(char[] chars) {
 		pos = (int) (UTF8Util.utf8ToArray(base + pos, chars) - base);
 	}
 
@@ -624,12 +620,8 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		final int len = readVarInt();
 		char[] chars = new char[len];
 
-		if (Bits.SSE3 && len >= Bits.JNI_UTF_VECTOR_THRESHOLD) {
-			if (Bits.AVX2) {
-				inflateCharAVX(chars);
-			} else {
-				inflateCharSSE(chars);
-			}
+		if (Bits.SIMD_AVAILABLE && len >= Bits.UTF_VECTORIZATION_THRESHOLD) {
+			inflateCharSIMD(chars);
 		} else {
 			inflateCharScalar(chars);
 		}
@@ -640,48 +632,48 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	// protobuf impl
 	public final long readVaLongP() {
 		fastpath: {
-		if (pos == lim) {
-			break fastpath;
-		}
+			if (pos == lim) {
+				break fastpath;
+			}
 
-		Unsafe u = U;
-		long p = base + pos;
+			Unsafe u = U;
+			long p = base + pos;
 
-		long x;
-		int y;
-		if ((y = u.getByte(p++)) >= 0) {
-			pos++;
-			return y;
-		} else if (lim - pos < 10) {
-			break fastpath;
-		} else if ((x = y ^ u.getByte(p++) << 7) < 0L) {
-			x ^= ~0L << 7;
-		} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14;
-		} else if ((x ^= u.getByte(p++) << 21) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
-		} else if ((x ^= (long) u.getByte(p++) << 28) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
-		} else if ((x ^= (long) u.getByte(p++) << 35) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35;
-		} else if ((x ^= (long) u.getByte(p++) << 42) >= 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42;
-		} else if ((x ^= (long) u.getByte(p++) << 49) < 0L) {
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49;
-		} else {
-			x ^= (long) u.getByte(p++) << 56;
-			x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49 ^ ~0L << 56;
-			if (x < 0L) {
-				if (u.getByte(p++) < 0L) {
-					break fastpath; // Will throw malformedVarint()
+			long x;
+			int y;
+			if ((y = u.getByte(p++)) >= 0) {
+				pos++;
+				return y;
+			} else if (lim - pos < 10) {
+				break fastpath;
+			} else if ((x = y ^ u.getByte(p++) << 7) < 0L) {
+				x ^= ~0L << 7;
+			} else if ((x ^= u.getByte(p++) << 14) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14;
+			} else if ((x ^= u.getByte(p++) << 21) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21;
+			} else if ((x ^= (long) u.getByte(p++) << 28) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28;
+			} else if ((x ^= (long) u.getByte(p++) << 35) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35;
+			} else if ((x ^= (long) u.getByte(p++) << 42) >= 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42;
+			} else if ((x ^= (long) u.getByte(p++) << 49) < 0L) {
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49;
+			} else {
+				x ^= (long) u.getByte(p++) << 56;
+				x ^= ~0L << 7 ^ ~0L << 14 ^ ~0L << 21 ^ ~0L << 28 ^ ~0L << 35 ^ ~0L << 42 ^ ~0L << 49 ^ ~0L << 56;
+				if (x < 0L) {
+					if (u.getByte(p++) < 0L) {
+						break fastpath; // Will throw malformedVarint()
+					}
 				}
 			}
+			pos = (int) (p - base);
+			return x;
 		}
-		pos = (int) (p - base);
-		return x;
-	}
 
-	return readRawVarint64SlowPath();
+		return readRawVarint64SlowPath();
 	}
 
 	public char readVarChar() {

@@ -214,11 +214,11 @@ public final class Bits {
 		return address;
 	}
 
-	public static final boolean SSE3;
+	public static final String SIMD_INSN_SET;
 
-	public static final boolean AVX2;
+	public static final boolean SIMD_AVAILABLE;
 
-	public static final int JNI_UTF_VECTOR_THRESHOLD = 128;
+	public static final int UTF_VECTORIZATION_THRESHOLD = 128;
 
 	static final long PRIMES;
 
@@ -266,15 +266,21 @@ public final class Bits {
 
 		String flags = Utils.execAndTrapOutput("/bin/sh", "-c", "cat /proc/cpuinfo | grep -m 1 flags");
 
-		// SSE2:
-		// [_mm_loadu_si128,_mm_storeu_si128,_mm_movemask_epi8,_mm_unpacklo_epi8,_mm_unpackhi_epi8]
-		// SSE3 is required for: [_mm_lddqu_si128]
-		SSE3 = flags.contains("sse3");
+		if (flags.contains("avx512")) {
+			// SSE2:
+			// [_mm_loadu_si128,_mm_storeu_si128,_mm_movemask_epi8,_mm_unpacklo_epi8,_mm_unpackhi_epi8]
+			// SSE3: [_mm_lddqu_si128]
+			SIMD_INSN_SET = "AVX512";
+		} else if (flags.contains("avx2")) {
+			// AVX: [_mm256_loadu_si256,_mm256_lddqu_si256,_mm256_storeu_si256]
+			// AVX2: [_mm256_movemask_epi8,_mm256_unpackhi_epi8,_mm256_unpackhi_epi8]
+			SIMD_INSN_SET = "AVX2";
+		} else if (flags.contains("sse3")) {
+			SIMD_INSN_SET = "SSE3";
+		} else {
+			SIMD_INSN_SET = null;
+		}
 
-		// AVX: [_mm256_loadu_si256,_mm256_lddqu_si256,_mm256_storeu_si256]
-		// AVX2 is required for: [_mm256_movemask_epi8,_mm256_unpackhi_epi8,_mm256_unpackhi_epi8]
-		AVX2 = flags.contains("avx2");
-
+		SIMD_AVAILABLE = SIMD_INSN_SET != null;
 	}
-
 }
