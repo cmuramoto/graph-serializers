@@ -8,30 +8,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-///*
-// * Class:     com_nc_gs_io_UTF8Util
-// * Method:    utf8ToArrayAVX
-// * Signature: (J[C)I
-// */
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArraySSE
-//  (JNIEnv *, jclass, jlong, jcharArray);
-//
-///*
-// * Class:     com_nc_gs_io_UTF8Util
-// * Method:    utf8ToArrayAVX
-// * Signature: (J[C)I
-// */
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX
-//  (JNIEnv *, jclass, jlong, jcharArray);
-//
-///*
-// * Class:     com_nc_gs_io_UTF8Util
-// * Method:    utf8ToArrayAVX
-// * Signature: (J[C)I
-// */
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512
-//  (JNIEnv *, jclass, jlong, jcharArray);
-
 /*
  * Class:     com_nc_gs_io_UTF8Util
  * Method:    utf8ToArray
@@ -47,6 +23,12 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray
  */
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress
   (JNIEnv *, jclass, jlong, jlong, jint);
+
+/*
+ * Class:     com_nc_gs_io_UTF8Util
+ * Method:    compilationFlags
+ * Signature: ()J
+ */
 
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_compilationFlags
   (JNIEnv *, jclass);

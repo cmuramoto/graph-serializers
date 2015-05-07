@@ -18,6 +18,7 @@ public class BenchUTFNative {
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("[\n");
+		sb.append("\tVectorization: ").append(Bits.SIMD_INSN_SET).append(", \n");
 		sb.append("\tForce SSE Alignment: ").append((flags & 0x1) != 0).append(", \n");
 		sb.append("\tForce AVX2 Alignment: ").append((flags & 0x2) != 0).append(", \n");
 		sb.append("\tForce AVX512 Alignment: ").append((flags & 0x2) != 0).append(", \n");

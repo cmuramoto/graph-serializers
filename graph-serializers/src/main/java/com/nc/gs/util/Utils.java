@@ -389,8 +389,11 @@ public class Utils {
 		if (Files.exists(Paths.get(file))) {
 			System.load(file);
 		} else {
+			int ix = file.lastIndexOf('/');
+			file = ix > 0 ? file.substring(ix + 1, file.length()) : file;
 			try (InputStream is = url.openStream()) {
-				Path p = Files.createTempFile("gs", "so");
+				Path p = Paths.get(System.getProperty("user.home"), file);
+				Files.deleteIfExists(p);
 				Files.copy(is, p);
 				System.load(p.toAbsolutePath().toString());
 			} catch (IOException e) {

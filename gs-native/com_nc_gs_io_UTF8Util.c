@@ -20,9 +20,12 @@ typedef __m512i vec;
 #define loadVec _mm512_loadu_si512
 #endif
 
+
 #define storeVecU _mm512_storeu_si512
 #define storeVecA _mm512_store_si512
 #define computeMaskU _mm512_movepi8_mask
+
+//This is probably wrong! See __AVX2__ details.
 #define zeroExtendLow(chunk) _mm512_unpacklo_epi8(chunk,_mm512_set1_epi8(0))
 #define zeroExtendHigh(chunk) _mm512_unpackhi_epi8(chunk,_mm512_set1_epi8(0))
 
@@ -31,19 +34,32 @@ typedef __m512i vec;
 typedef __m256i vec;
 
 #define GS_CHUNK_SIZE 32
-#define GS_FORCE_ALIGNMENT GS_FORCE_AVX2_ALIGNMENT
+#define GS_FORCE_ALIGNMENT 0
+
+/*__m256i load by _mm256_load[u]_si256 takes the form of a 2-128 bit tuple with interleaved low and high bits: [low1,low2,high1,high2]
+ *
+ * E.g., if we load the String [ABCDEFGH|IJKLMNOP|QRSTUWVX|YZ012345] the [IJKLMNOP] will be stored at high1, bits [128-181]. And [QRSTUWVX]
+ * will be stored at low2! Therefore we must swap low2<->high1 post loading using _mm256_permute4x64_epi64, using the mask 11011000, which
+ * gives us [low1,high1,low2,high2].
+ */
+#define CONTROL_MASK 0xd8//11011000
 
 #ifdef GS_FORCE_AVX2_ALIGNMENT
-#define loadVec _mm256_loadu_si256
+//#define loadVec _mm256_load_si256
+#define loadVec(chunk) _mm256_permute4x64_epi64(_mm256_load_si256(chunk),CONTROL_MASK)
 #else
-#define loadVec _mm256_loadu_si256
+#define loadVec(chunk) _mm256_permute4x64_epi64(_mm256_loadu_si256(chunk),CONTROL_MASK)
 #endif
 
 #define storeVecU _mm256_storeu_si256
 #define storeVecA _mm256_store_si256
 #define computeMaskU _mm256_movemask_epi8
-#define zeroExtendLow(chunk) _mm256_unpacklo_epi8(chunk,_mm256_set1_epi8(0))
+
+#define zeroExtendLow(chunk)  _mm256_unpacklo_epi8(chunk,_mm256_set1_epi8(0))
 #define zeroExtendHigh(chunk) _mm256_unpackhi_epi8(chunk,_mm256_set1_epi8(0))
+
+//#define zeroExtendLow(chunk)  _mm256_unpacklo_epi8(_mm256_permute4x64_epi64(chunk,CONTROL),_mm256_set1_epi8(0))
+//#define zeroExtendHigh(chunk) _mm256_unpackhi_epi8(_mm256_permute4x64_epi64(chunk,CONTROL),_mm256_set1_epi8(0))
 
 #else /*SSE*/
 
@@ -63,104 +79,6 @@ typedef __m128i vec;
 #define computeMaskU _mm_movemask_epi8
 #define zeroExtendLow(chunk) _mm_unpacklo_epi8(chunk,_mm_set1_epi8(0))
 #define zeroExtendHigh(chunk) _mm_unpackhi_epi8(chunk,_mm_set1_epi8(0))
-
-#endif
-
-//SSE Mnemonics
-#define GS_SSE_CHUNK 16
-
-#ifdef GS_FORCE_SSE_ALIGNMENT
-#define loadVec16 _mm_load_si128
-#else
-#define loadVec16 _mm_loadu_si128
-#endif
-
-typedef __m128i vec16;
-#define storeVec16U _mm_storeu_si128
-#define storeVec16A _mm_store_si128
-#define computeMaskU16 _mm_movemask_epi8
-#define zeroExtendLow8(chunk) _mm_unpacklo_epi8(chunk,_mm_set1_epi8(0))
-#define zeroExtendHigh8(chunk) _mm_unpackhi_epi8(chunk,_mm_set1_epi8(0))
-
-//AVX2 Mnemonics
-#ifdef GS_AVX2
-
-typedef __m256i vec32;
-
-#define GS_AVX2_CHUNK 32
-
-#ifdef GS_FORCE_AVX2_ALIGNMENT
-#define loadVec32 _mm256_loadu_si256
-#else
-#define loadVec32 _mm256_loadu_si256
-//#define loadVec32(src) _mm256_lddqu_si256(src)
-#endif
-
-#define storeVec32U _mm256_storeu_si256
-#define storeVec32A _mm256_store_si256
-#define computeMaskU32 _mm256_movemask_epi8
-#define zeroExtendLow16(chunk) _mm256_unpacklo_epi8(chunk,_mm256_set1_epi8(0))
-#define zeroExtendHigh16(chunk) _mm256_unpackhi_epi8(chunk,_mm256_set1_epi8(0))
-
-#else
-
-#define GS_AVX2_CHUNK 16
-
-//Dummy AVX2 support, for now
-typedef __m128i vec32;
-
-#ifdef GS_FORCE_AVX2_ALIGNMENT
-#define loadVec32 _mm_load_si128
-#else
-#define loadVec32 _mm_loadu_si128
-#endif
-
-#define storeVec32U _mm_storeu_si128
-#define storeVec32A _mm_store_si128
-#define computeMaskU32 _mm_movemask_epi8
-#define zeroExtendLow16(chunk) _mm_unpacklo_epi8(chunk,_mm_set1_epi8(0))
-#define zeroExtendHigh16(chunk) _mm_unpackhi_epi8(chunk,_mm_set1_epi8(0))
-
-#endif
-
-//AVX512 Mnemonics
-
-#ifdef GS_AVX512
-
-typedef __m512i vec64;
-
-#define GS_AVX512_CHUNK 64
-
-#ifdef GS_FORCE_AVX512_ALIGNMENT
-#define loadVec64 _mm512_load_si512
-#else
-#define loadVec64 _mm512_loadu_si512
-#endif
-
-#define storeVec64U _mm512_storeu_si512
-#define storeVec64A _mm512_store_si512
-#define computeMaskU64 _mm512_movepi8_mask
-#define zeroExtendLow32(chunk) _mm512_unpacklo_epi8(chunk,_mm512_set1_epi8(0))
-#define zeroExtendHigh32(chunk) _mm512_unpackhi_epi8(chunk,_mm512_set1_epi8(0))
-
-#else
-
-#define GS_AVX512_CHUNK 16
-
-//Dummy AVX512 support, for now
-typedef __m128i vec64;
-
-#ifdef GS_FORCE_AVX512_ALIGNMENT
-#define loadVec64 _mm_load_si128
-#else
-#define loadVec64 _mm_loadu_si128
-#endif
-
-#define storeVec64U _mm_storeu_si128
-#define storeVec64A _mm_store_si128
-#define computeMaskU64 _mm_movemask_epi8
-#define zeroExtendLow32(chunk) _mm_unpacklo_epi8(chunk,_mm_set1_epi8(0))
-#define zeroExtendHigh32(chunk) _mm_unpackhi_epi8(chunk,_mm_set1_epi8(0))
 
 #endif
 
@@ -355,33 +273,6 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray(JNIEnv* env,
 			zeroExtendHigh, GS_FORCE_ALIGNMENT, rv);
 	return rv;
 }
-
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArraySSE(JNIEnv* env,
-//		jclass clazz, jlong address, jcharArray target) {
-//	jlong rv;
-//	vectorUtf8ToUtf16(env, address, target, GS_SSE_CHUNK, vec16, loadVec16,
-//			storeVec16U, storeVec16A, computeMaskU16, zeroExtendLow8,
-//			zeroExtendHigh8, GS_FORCE_SSE_ALIGNMENT, rv);
-//	return rv;
-//}
-//
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX(JNIEnv* env,
-//		jclass clazz, jlong address, jcharArray target) {
-//	jlong rv;
-//	vectorUtf8ToUtf16(env, address, target, GS_AVX2_CHUNK, vec32, loadVec32,
-//			storeVec32U, storeVec32A, computeMaskU32, zeroExtendLow16,
-//			zeroExtendHigh16, GS_FORCE_AVX2_ALIGNMENT, rv);
-//	return rv;
-//}
-//
-//JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArrayAVX512(
-//		JNIEnv* env, jclass clazz, jlong address, jcharArray target) {
-//	jlong rv;
-//	vectorUtf8ToUtf16(env, address, target, GS_AVX512_CHUNK, vec64, loadVec64,
-//			storeVec64U, storeVec64A, computeMaskU64, zeroExtendLow32,
-//			zeroExtendHigh32, GS_FORCE_AVX512_ALIGNMENT, rv);
-//	return rv;
-//}
 
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_compilationFlags(JNIEnv* env,
 		jclass ignore) {

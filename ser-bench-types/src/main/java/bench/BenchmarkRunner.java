@@ -16,10 +16,27 @@ import serializers.impl.thrift.ThriftSerializer;
 import serializers.spi.CheckingObjectSerializer;
 import serializers.spi.ObjectSerializer;
 
+import com.nc.gs.io.UTF8Util;
+import com.nc.gs.util.Bits;
+
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class BenchmarkRunner {
 	enum measurements {
 		timeCreate, timeSerializeDifferentObjects, timeCreateAndSerialize, timeSerializeSameObject, timeDeserializeNoFieldAccess, timeDeserializeAndCheckMediaField, timeDeserializeAndCheckAllFields, totalTime, length
+	}
+
+	public static String decodeFlags(long flags) {
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("[\n");
+		sb.append("\tInstruction Set: ").append(Bits.SIMD_INSN_SET).append(", \n");
+		sb.append("\tForce SSE Alignment: ").append((flags & 0x1) != 0).append(", \n");
+		sb.append("\tForce AVX2 Alignment: ").append((flags & 0x2) != 0).append(", \n");
+		sb.append("\tForce AVX512 Alignment: ").append((flags & 0x2) != 0).append(", \n");
+		sb.append("\tTry Aligned Stores: ").append((flags & 0x8) != 0);
+		sb.append("\n]");
+
+		return sb.toString();
 	}
 
 	public static void main(String... args) throws Exception {
@@ -36,6 +53,8 @@ public class BenchmarkRunner {
 		// runner.addObjectSerializer(new JavaSerializer());
 
 		System.out.println("Starting");
+
+		System.out.println(decodeFlags(UTF8Util.compilationFlags()));
 
 		TextSource[] mix = { TextSource.LARGE_ASCII, TextSource.MIXED, TextSource.ASCII };
 
