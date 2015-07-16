@@ -65,6 +65,9 @@ public class Main {
 }
 ```
 
+
+
+
 #### Sinks, Sources and (no) Streaming
 
 The Sink and Source extend (Output/Input)Stream as well as implement Data(Output/Input), however as of now they are meant to be used more like direct ByteBuffers. The reason for this is to avoid flushing and filling logic during (des-)serialization. So, during serialization everything will be done (and) held in memory until one decides to commit the data to another I/O target and during the deserialization the whole source stream should be consumed beforehand.
@@ -236,11 +239,78 @@ public class MediaContent implements Serializable {
 
 The annotations aren't realy necessary, however to make the benchmark more apples-to-apples we used some annotations to inform the graph-serializers framework to make certain optimizations.
 
-##### Methodology
+### Optimizations
+
+#### SIMD UTF-8 processing
+
+UTF-8 to UTF-16 (Java's 'native' encoding) conversion and vice-versa can be tricky to optimize. Java algorithms usually make an 'optimistic' loop to handle ASCII characters and fall back to a more complex code once a non-Ascii char is found in the stream. The following code block is an excerpt of readUTF method from from Java's DataInputStream class:
+
+```java
+
+	//Ascii Loop. Once a non-Ascii char is found, fallback to 'deoptimized' code.
+	while (count < utflen) {
+            c = (int) bytearr[count] & 0xff;
+            if (c > 127) break;
+            count++;
+            chararr[chararr_count++]=(char)c;
+	}
+
+	//More complex loop. Handle both Ascii and non-Ascii chars. 
+	while (count < utflen) {
+            c = (int) bytearr[count] & 0xff;
+            switch (c >> 4) {
+                case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+                    /* 0xxxxxxx*/
+                    count++;
+                    chararr[chararr_count++]=(char)c;
+                    break;
+                case 12: case 13:
+                    /* 110x xxxx   10xx xxxx*/
+                    count += 2;
+                    if (count > utflen)
+                        throw new UTFDataFormatException(
+                            "malformed input: partial character at end");
+                    char2 = (int) bytearr[count-1];
+                    if ((char2 & 0xC0) != 0x80)
+                        throw new UTFDataFormatException(
+                            "malformed input around byte " + count);
+                    chararr[chararr_count++]=(char)(((c & 0x1F) << 6) |
+                                                    (char2 & 0x3F));
+                    break;
+                case 14:
+                    /* 1110 xxxx  10xx xxxx  10xx xxxx */
+                    count += 3;
+                    if (count > utflen)
+                        throw new UTFDataFormatException(
+                            "malformed input: partial character at end");
+                    char2 = (int) bytearr[count-2];
+                    char3 = (int) bytearr[count-1];
+                    if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
+                        throw new UTFDataFormatException(
+                            "malformed input around byte " + (count-1));
+                    chararr[chararr_count++]=(char)(((c     & 0x0F) << 12) |
+                                                    ((char2 & 0x3F) << 6)  |
+                                                    ((char3 & 0x3F) << 0));
+                    break;
+                default:
+                    /* 10xx xxxx,  1111 xxxx */
+                    throw new UTFDataFormatException(
+                        "malformed input around byte " + count);
+            }
+        }
+```
+
+The problem with this code is that JIT compilers aren't not yet capable of vectorizing even simple loops like the 'ideal' Ascii loop. 
+
+When dealing with large Strings (>128 chars) vectorization can play a huge difference in serialization/deserialization performance. Even for pure-Ascii text, the speed gains can be as large as 5x! Microbenchmarks using ~5K non-pure Ascii text revealed about 9x times faster deserialization performance! 
+
+As of now, GraphSerializers will use JNI to invoke SIMD processing during deserialization if the underlying platform is Linux (64-bit). On simple tests, SSE 4.2 and AVX2.0 implementations displayed the same performance for pure-Ascii text. The fully vectorized implementation is only available using SSE 4.2 instructions and is based on the [UTF-8 processing using SIMD (SSE4) article](http://woboq.com/blog/utf-8-processing-using-simd.html) and AVX2.0 is a work in progress. 
+
+
+
+#### Annotations
 
 //TODO
-
-#### Optimizations
 
 ##### @LeafNode
 
