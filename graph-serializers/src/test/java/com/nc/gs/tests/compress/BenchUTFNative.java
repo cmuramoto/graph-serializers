@@ -1,5 +1,8 @@
 package com.nc.gs.tests.compress;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -41,6 +44,8 @@ public class BenchUTFNative {
 
 	static int[] BLOCK_LENS = { 17, 37, 113, 517, 1037, 2023, Bits.nextPrime(10000) };
 
+	static String[] TEXT_SOURCES = { "paradiseXXXIII.txt" };
+
 	void doGc() {
 		System.gc();
 		System.gc();
@@ -48,19 +53,30 @@ public class BenchUTFNative {
 		System.gc();
 	}
 
+	private String loadTextSource(String str) throws IOException {
+		StringBuilder sb = new StringBuilder();
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(str)))) {
+			String l;
+			while ((l = br.readLine()) != null) {
+				sb.append(l);
+			}
+		}
+
+		return sb.toString();
+	}
+
 	String makeString(int n, int len) {
 		StringBuilder sb = new StringBuilder();
 		ThreadLocalRandom r = ThreadLocalRandom.current();
 		for (int i = 0; i < n * len; i++) {
 			sb.append((char) r.nextInt(127));
-			// sb.append('A');
 		}
 
 		return sb.toString();
 	}
 
 	@Test
-	public void run() {
+	public void run() throws IOException {
 
 		try (Sink s = new Sink()) {
 
@@ -82,13 +98,29 @@ public class BenchUTFNative {
 
 				System.out.println("---------------------------");
 			}
+
+			for (String str : TEXT_SOURCES) {
+				s.reset();
+
+				String v = loadTextSource(str);
+
+				System.out.printf("-------------(%d)-----------\n", v.length());
+
+				s.writeUTF(v);
+
+				Source source = s.mirror();
+
+				run(source, v);
+			}
 		}
 	}
 
 	private boolean run(Source source, String v) {
 		char[] buff = new char[v.length()];
 		source.reset();
-		Assert.assertEquals(v, source.readUTF());
+		source.readVarInt();
+		source.inflateCharScalar(buff);
+		Assert.assertEquals(v, new String(buff));
 
 		source.reset();
 		source.readVarInt();

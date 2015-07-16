@@ -40,49 +40,54 @@ public class BenchmarkRunner {
 	}
 
 	public static void main(String... args) throws Exception {
-		BenchmarkRunner runner = new BenchmarkRunner();
-		boolean thrift = Boolean.getBoolean("benchmark.enable.thrift");
 
-		runner.addObjectSerializer(new serializers.impl.gs.compressed.GSImpl());
-		runner.addObjectSerializer(new serializers.impl.gs.std.GSImpl());
-		runner.addObjectSerializer(new ProtobufSerializer());
-		if (thrift) {
-			runner.addObjectSerializer(new ThriftSerializer());
-		}
+		if (Boolean.getBoolean("run.utf.native")) {
+			new BenchUTFNative().run();
+		} else {
 
-		// runner.addObjectSerializer(new JavaSerializer());
+			BenchmarkRunner runner = new BenchmarkRunner();
+			boolean thrift = Boolean.getBoolean("benchmark.enable.thrift");
 
-		System.out.println("Starting");
-
-		System.out.println(decodeFlags(UTF8Util.compilationFlags()));
-
-		TextSource[] mix = { TextSource.LARGE_ASCII, TextSource.MIXED, TextSource.ASCII };
-
-		int repeats = Integer.getInteger("benchmark.repeats.max", 4);
-
-		System.out.println("Mixed");
-
-		for (TextSource ts : mix) {
-			for (ObjectSerializer ser : runner._serializers) {
-				((CheckingObjectSerializer<?>) ser).setTs(ts);
+			runner.addObjectSerializer(new serializers.impl.gs.compressed.GSImpl());
+			runner.addObjectSerializer(new serializers.impl.gs.std.GSImpl());
+			runner.addObjectSerializer(new ProtobufSerializer());
+			if (thrift) {
+				runner.addObjectSerializer(new ThriftSerializer());
 			}
+
+			// runner.addObjectSerializer(new JavaSerializer());
+
+			System.out.println("Starting");
+
+			System.out.println(decodeFlags(UTF8Util.compilationFlags()));
+
+			TextSource[] mix = { TextSource.LARGE_ASCII, TextSource.MIXED, TextSource.ASCII };
+
+			int repeats = Integer.getInteger("benchmark.repeats.max", 4);
+
+			System.out.println("Mixed");
+
+			for (TextSource ts : mix) {
+				for (ObjectSerializer ser : runner._serializers) {
+					((CheckingObjectSerializer<?>) ser).setTs(ts);
+				}
+				for (int i = 1; i <= repeats; i++) {
+					runner.start(i, repeats);
+				}
+
+			}
+
+			System.out.println("Pure Ascii");
+
 			for (int i = 1; i <= repeats; i++) {
 				runner.start(i, repeats);
+
+				// for (ObjectSerializer ser : runner._serializers) {
+				// ((CheckingObjectSerializer<?>) ser).setTs(ts);
+				// }
+				// ts = ts == TextSource.MIXED ? TextSource.ASCII : TextSource.MIXED;
 			}
-
 		}
-
-		System.out.println("Pure Ascii");
-
-		for (int i = 1; i <= repeats; i++) {
-			runner.start(i, repeats);
-
-			// for (ObjectSerializer ser : runner._serializers) {
-			// ((CheckingObjectSerializer<?>) ser).setTs(ts);
-			// }
-			// ts = ts == TextSource.MIXED ? TextSource.ASCII : TextSource.MIXED;
-		}
-
 	}
 
 	public final static int ITERATIONS = 2000;
