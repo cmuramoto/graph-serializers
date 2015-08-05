@@ -49,13 +49,7 @@ function postAction(){
 trap postAction EXIT;
 
 case "$1" in
-        SSE3)
-                build $1 $2
-        ;;
-        AVX2)
-                build $1 $2
-        ;;
-        AVX512)
+        SSE3 | AVX2 | AVX512)
                 build $1 $2
         ;;
         *)

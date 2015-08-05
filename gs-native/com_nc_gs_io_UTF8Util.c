@@ -209,7 +209,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 
 #if GS_TRY_ALIGNED_STORES != 0
 
-#define vectorAsciiLoop(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) {\
+#define VECTOR_ASCII_LOOP(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) {\
 	if (IS_ALIGNED(dst,CHUNK)){ \
 		while (len >= CHUNK) { \
 			VEC chunk = LOAD((VEC * ) src); \
@@ -242,7 +242,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 
 #else
 
-#define vectorAsciiLoop(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) {\
+#define VECTOR_ASCII_LOOP(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) {\
 	while (len >= CHUNK) { \
 		VEC chunk = LOAD((VEC * ) src); \
 		\
@@ -282,7 +282,7 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 	} \
 	\
 	/*The Vector Loop */ \
-	vectorAsciiLoop(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) \
+	VECTOR_ASCII_LOOP(src,dst,len,CHUNK,VEC,LOAD,STOREU,STOREA,CM,ZEL,ZEH) \
 	\
 	deopt: \
 	SCALAR_LOOP(c0,c1,c2,src,dst,len); \
@@ -295,15 +295,6 @@ JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToAddress(JNIEnv * env,
 #ifdef __GS__SSE3__
 
 #define V(X) _mm_set1_epi8(X)
-
-static vec* SHIFT_V;
-
-inline vec shiftV(){
-	if(!SHIFT_V){
-
-	}
-	return *SHIFT_V;
-}
 
 JNIEXPORT jlong JNICALL Java_com_nc_gs_io_UTF8Util_utf8ToArray(JNIEnv* env,
 		jclass clazz, jlong address, jcharArray target) {
