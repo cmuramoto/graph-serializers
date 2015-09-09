@@ -38,6 +38,10 @@ public interface _Meta {
 		String complete = "complete";
 	}
 
+	interface Intern {
+		String desc = "Lcom/nc/gs/meta/Intern;";
+	}
+
 	interface InternalNode {
 		String desc = "Lcom/nc/gs/meta/InternalNode;";
 	}

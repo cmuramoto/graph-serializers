@@ -24,6 +24,10 @@ public interface _GraphSerializer {
 		String writeData = PREFIX + _GraphSerializer.writeData;
 
 		String instantiate = "allocate";
+
+		String intern = "intern";
+
+		String unintern = "unintern";
 	}
 
 	String ctor_D = "()V";
@@ -58,4 +62,10 @@ public interface _GraphSerializer {
 	String writeNested = "writeNested";
 
 	String readNested = "readNested";
+
+	String intern = "intern";
+	String intern_D = write_D;
+
+	String unintern = "unintern";
+	String unintern_D = read_D;
 }

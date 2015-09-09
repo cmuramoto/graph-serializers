@@ -6,6 +6,7 @@ import static symbols.io.abstraction._Tags.FieldInfo.ACC_COL_CMP;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_COMPLETE_HIERARCHY;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_COMPRESSED;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_IN;
+import static symbols.io.abstraction._Tags.FieldInfo.ACC_INTERNED;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_LEAF;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_MAP;
 import static symbols.io.abstraction._Tags.FieldInfo.ACC_MAP_CMP;
@@ -29,6 +30,12 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.TypePath;
 
+import com.nc.gs.log.Log;
+import com.nc.gs.meta.Collection;
+import com.nc.gs.meta.Map;
+import com.nc.gs.util.Pair;
+import com.nc.gs.util.Utils;
+
 import symbols.io.abstraction._ArraySerializer;
 import symbols.io.abstraction._CollectionSerializer;
 import symbols.io.abstraction._Context;
@@ -44,12 +51,6 @@ import symbols.io.abstraction._Tags.ObjectShape;
 import symbols.java.lang._Class;
 import symbols.java.lang._Number;
 import symbols.java.lang._Object;
-
-import com.nc.gs.log.Log;
-import com.nc.gs.meta.Collection;
-import com.nc.gs.meta.Map;
-import com.nc.gs.util.Pair;
-import com.nc.gs.util.Utils;
 
 public final class FieldInfo extends FieldVisitor implements Comparable<FieldInfo> {
 
@@ -382,11 +383,11 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	public long access;
 
 	public String name;
+
 	public String desc;
 	public String signature;
 	public long offset;
 	final ExtendedType owner;
-
 	ExtendedType type;
 
 	Object hierarchy;
@@ -643,7 +644,7 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	}
 
 	public boolean disregardReference() {
-		return (access & ACC_ONLY_DATA) != 0;
+		return (access & ACC_ONLY_DATA) != 0 || owner().propagateOnlyPayload();
 	}
 
 	public CollectionMeta getCollectionMeta() {
@@ -831,6 +832,10 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 
 	public boolean isInternalNode() {
 		return (access & ACC_IN) != 0;
+	}
+
+	public boolean isInterned() {
+		return (access & ACC_INTERNED) != 0 || owner().propagateInterned();
 	}
 
 	public boolean isMap() {
@@ -1137,6 +1142,9 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 				break;
 			case _Meta.OnlyPayload.desc:
 				access |= ACC_ONLY_DATA;
+				break;
+			case _Meta.Intern.desc:
+				access |= ACC_INTERNED;
 				break;
 			case _Meta.Serialized.desc:
 				return new Serialized();

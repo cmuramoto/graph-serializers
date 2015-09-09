@@ -7,12 +7,17 @@ import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SYNTHETIC;
 import static org.objectweb.asm.Opcodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ARETURN;
+import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.CHECKCAST;
 import static org.objectweb.asm.Opcodes.DUP;
+import static org.objectweb.asm.Opcodes.IFNE;
+import static org.objectweb.asm.Opcodes.IFNONNULL;
+import static org.objectweb.asm.Opcodes.ILOAD;
 import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.ISTORE;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.RETURN;
 
@@ -28,6 +33,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -42,16 +48,6 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-import symbols.io.abstraction._Context;
-import symbols.io.abstraction._GraphSerializer;
-import symbols.io.abstraction._GraphSerializer._R_;
-import symbols.io.abstraction._SerializerFactory;
-import symbols.io.abstraction._Sink;
-import symbols.io.abstraction._Source;
-import symbols.java.lang._Class;
-import symbols.java.util._Collection;
-import symbols.java.util._Iterator;
-
 import com.nc.gs.core.GraphClassLoader;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.SerializerFactory;
@@ -62,6 +58,16 @@ import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.interpreter.VisitationContext;
 import com.nc.gs.serializers.java.util.CollectionSerializer;
 import com.nc.gs.util.Utils;
+
+import symbols.io.abstraction._Context;
+import symbols.io.abstraction._GraphSerializer;
+import symbols.io.abstraction._GraphSerializer._R_;
+import symbols.io.abstraction._SerializerFactory;
+import symbols.io.abstraction._Sink;
+import symbols.io.abstraction._Source;
+import symbols.java.lang._Class;
+import symbols.java.util._Collection;
+import symbols.java.util._Iterator;
 
 public class Reifier {
 
@@ -261,6 +267,8 @@ public class Reifier {
 			reifyWrite(cv, ser, type);
 			reifyInflate(cv, ser, type);
 			reifyInstantiate(cv, ser, type);
+			reifyIntern(cv, type.type(), ser.name);
+			reifyUnintern(cv, type.type(), ser.name, inflateOverride);
 		}
 
 		private void adaptStaticFields(ClassVisitor cv, ExtendedType nt) {
@@ -686,19 +694,19 @@ public class Reifier {
 				boolean abs = (access & Opcodes.ACC_ABSTRACT) != 0;
 				return new DelegatingToReifiedMV(super.visitMethod(ACC_PUBLIC + ACC_FINAL, name, desc, signature, exceptions), abs, root, _R_.writeData, targetName);
 
-				// boolean abs = (access & Opcodes.ACC_ABSTRACT) != 0;
-				// MethodVisitor mv = new DelegatingToReifiedMV(
-				// super.visitMethod(ACC_PUBLIC + ACC_FINAL, name, desc,
-				// signature, exceptions),
-				// abs,
-				// root,
-				// name.equals(_GraphSerializer.inflateData) ? _R_.inflateData
-				// : _R_.writeData, targetName);
-				// if (name.equals(_GraphSerializer.inflateData)) {
-				// inflate = mv;
-				// return null;
-				// }
-				// return mv;
+			// boolean abs = (access & Opcodes.ACC_ABSTRACT) != 0;
+			// MethodVisitor mv = new DelegatingToReifiedMV(
+			// super.visitMethod(ACC_PUBLIC + ACC_FINAL, name, desc,
+			// signature, exceptions),
+			// abs,
+			// root,
+			// name.equals(_GraphSerializer.inflateData) ? _R_.inflateData
+			// : _R_.writeData, targetName);
+			// if (name.equals(_GraphSerializer.inflateData)) {
+			// inflate = mv;
+			// return null;
+			// }
+			// return mv;
 
 			case _GraphSerializer.readOpaque:
 				return readData = new MethodNode(ACC_PUBLIC | ACC_STATIC, _R_.PREFIX + name, Symbols._R_readDataDesc(root.basic().desc), signature, exceptions);
@@ -710,17 +718,17 @@ public class Reifier {
 
 				return new MethodReifier(root, targetName, true, super.visitMethod(ACC_PUBLIC + ACC_STATIC, mn, dsc, signature, exceptions));
 
-				// boolean isWrite = _GraphSerializer.write_D.equals(desc);
-				//
-				// String mn = _R_.PREFIX + name;
-				//
-				// String dsc = isWrite ? Symbols
-				// ._R_writeDataDesc(root.basic().desc) : Symbols
-				// ._R_readDataDesc(root.basic().desc);
-				//
-				// return new MethodReifier(root, targetName, isWrite,
-				// super.visitMethod(ACC_PUBLIC + ACC_STATIC, mn, dsc,
-				// signature, exceptions));
+			// boolean isWrite = _GraphSerializer.write_D.equals(desc);
+			//
+			// String mn = _R_.PREFIX + name;
+			//
+			// String dsc = isWrite ? Symbols
+			// ._R_writeDataDesc(root.basic().desc) : Symbols
+			// ._R_readDataDesc(root.basic().desc);
+			//
+			// return new MethodReifier(root, targetName, isWrite,
+			// super.visitMethod(ACC_PUBLIC + ACC_STATIC, mn, dsc,
+			// signature, exceptions));
 			default:
 				break;
 			}
@@ -878,6 +886,65 @@ public class Reifier {
 			}
 
 		}
+	}
+
+	public static void reifyIntern(ClassVisitor cv, Type type, String owner) {
+		final String desc = Symbols.reifiedWritePayloadDesc(type);
+		final MethodVisitor mv = cv.visitMethod(ACC_PUBLIC + ACC_STATIC, _R_.intern, desc, null, null);
+
+		mv.visitCode();
+
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitVarInsn(ALOAD, 1);
+		mv.visitVarInsn(ALOAD, 2);
+		mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, _Context.nullSafeInterned, _Context.nullSafeInterned_D, false);
+		final Label ne = new Label();
+		mv.visitJumpInsn(IFNE, ne);
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitVarInsn(ALOAD, 1);
+		mv.visitVarInsn(ALOAD, 2);
+		mv.visitMethodInsn(INVOKESTATIC, owner, _R_.writeData, desc, false);
+
+		mv.visitLabel(ne);
+		mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
+		mv.visitInsn(RETURN);
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
+	}
+
+	public static void reifyUnintern(ClassVisitor cv, Type type, String owner, boolean inflateOverride) {
+		final String desc = Symbols.reifiedReadDesc(type);
+		final MethodVisitor mv = cv.visitMethod(ACC_PUBLIC + ACC_STATIC, _R_.unintern, desc, null, null);
+		mv.visitCode();
+		mv.visitVarInsn(ALOAD, 1);
+		mv.visitMethodInsn(INVOKEVIRTUAL, _Source.name, _Source.unpackI, _Source.unpackI_D, false);
+		mv.visitVarInsn(ISTORE, 2);
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitVarInsn(ILOAD, 2);
+		mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, _Context.interned, _Context.interned_D, false);
+		mv.visitTypeInsn(CHECKCAST, type.getInternalName());
+		mv.visitVarInsn(ASTORE, 3);
+		mv.visitVarInsn(ALOAD, 3);
+		final Label nn = new Label();
+		mv.visitJumpInsn(IFNONNULL, nn);
+		mv.visitVarInsn(ALOAD, 1);
+		mv.visitMethodInsn(INVOKESTATIC, owner, _R_.instantiate, Symbols.reifiedInstantiateDesc(type.getDescriptor()), false);
+		mv.visitVarInsn(ASTORE, 3);
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitVarInsn(ALOAD, 3);
+		mv.visitVarInsn(ILOAD, 2);
+		mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, _Context.markInterned, _Context.markInterned_D, false);
+		if (inflateOverride) {
+			mv.visitVarInsn(ALOAD, 0);
+			mv.visitVarInsn(ALOAD, 1);
+			mv.visitVarInsn(ALOAD, 3);
+			mv.visitMethodInsn(INVOKESTATIC, owner, _R_.inflateData, Symbols.reifiedInflateDataDesc(type), false);
+		}
+		mv.visitLabel(nn);
+		mv.visitVarInsn(ALOAD, 3);
+		mv.visitInsn(ARETURN);
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
 	}
 
 	public static MethodVisitor switchVisit(ClassInfo root, String targetName, GenerationStrategy strategy, ClassVisitor cv, int access, String name, String desc, String signature, String[] exceptions) {

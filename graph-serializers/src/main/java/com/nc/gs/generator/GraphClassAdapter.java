@@ -29,14 +29,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
-import symbols.io.abstraction._Context;
-import symbols.io.abstraction._GraphSerializer;
-import symbols.io.abstraction._SerializerFactory;
-import symbols.io.abstraction._Sink;
-import symbols.io.abstraction._Util;
-import symbols.java.lang._Class;
-import symbols.java.lang._Object;
-
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.SerializerFactory;
 import com.nc.gs.interpreter.ClassInfo;
@@ -47,6 +39,14 @@ import com.nc.gs.interpreter.ICSlot;
 import com.nc.gs.interpreter.SpecialField;
 import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.util.Pair;
+
+import symbols.io.abstraction._Context;
+import symbols.io.abstraction._GraphSerializer;
+import symbols.io.abstraction._SerializerFactory;
+import symbols.io.abstraction._Sink;
+import symbols.io.abstraction._Util;
+import symbols.java.lang._Class;
+import symbols.java.lang._Object;
 
 public abstract class GraphClassAdapter extends ClassVisitor {
 
@@ -272,7 +272,7 @@ public abstract class GraphClassAdapter extends ClassVisitor {
 				h.sers = sers;
 				h.reified = mask;
 
-				ICSlot slot = new ICSlot(targetName, null, h, val.writeMethod = disambiguate(fi.writeInlineName()), val.readMethod = disambiguate(fi.readInlineName()), fi.disregardReference());
+				ICSlot slot = new ICSlot(targetName, null, h, val.writeMethod = disambiguate(fi.writeInlineName()), val.readMethod = disambiguate(fi.readInlineName()), fi.disregardReference(), fi.isInterned());
 				slot.writeDesc = val.writeMethodDesc = fi.writeInlineDesc();
 				slot.readDesc = val.readMethodDesc = fi.readInlineDesc();
 				slot.patchInlineCaches(cv, false);

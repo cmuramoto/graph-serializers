@@ -14,14 +14,14 @@ public abstract class ClassTable {
 
 	static final class AutoMap extends ClassTable {
 
-		final IdentityMap<Class<?>> map;
+		final L2IMap<Class<?>> map;
 
 		Class<?>[] slots;
 
 		int max;
 
 		public AutoMap(Pair<int[], Class<?>[]> mapped) {
-			IdentityMap<Class<?>> map = new IdentityMap<>(-1);
+			L2IMap<Class<?>> map = new L2IMap<>(-1);
 			Class<?>[] types;
 
 			int max = 0;
@@ -78,12 +78,12 @@ public abstract class ClassTable {
 
 	static final class FrozenMap extends ClassTable {
 
-		final IdentityMap<Class<?>> map;
+		final L2IMap<Class<?>> map;
 
 		Class<?>[] slots;
 
 		public FrozenMap(Pair<int[], Class<?>[]> mapped) {
-			IdentityMap<Class<?>> map = new IdentityMap<>(0);
+			L2IMap<Class<?>> map = new L2IMap<>(0);
 			Class<?>[] types;
 			if (mapped != null) {
 				int[] tIds = mapped.k;

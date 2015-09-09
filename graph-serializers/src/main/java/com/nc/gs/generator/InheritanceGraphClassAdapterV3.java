@@ -30,17 +30,17 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
-import symbols.io.abstraction._GraphSerializer._R_;
-import symbols.io.abstraction._Sink;
-import symbols.io.abstraction._Source;
-import symbols.io.abstraction._Util;
-import symbols.sun.misc._Unsafe;
-
 import com.nc.gs.interpreter.ClassInfo;
 import com.nc.gs.interpreter.FieldInfo;
 import com.nc.gs.interpreter.SpecialField;
 import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.util.Utils;
+
+import symbols.io.abstraction._GraphSerializer._R_;
+import symbols.io.abstraction._Sink;
+import symbols.io.abstraction._Source;
+import symbols.io.abstraction._Util;
+import symbols.sun.misc._Unsafe;
 
 public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
@@ -706,6 +706,14 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 		}
 	}
 
+	void reifyIntern() {
+		Reifier.reifyIntern(cv, root.type(), targetName);
+	}
+
+	void reifyUnintern() {
+		Reifier.reifyUnintern(cv, root.type(), targetName, true);
+	}
+
 	private boolean verifyNeedForUnsafe(MethodVisitor mv, boolean forWrite) {
 
 		boolean needsUnsafe = checkNeedsUnsafe(prims, forWrite) //
@@ -733,6 +741,10 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 		implementReadPayload();
 
 		staticFieldsForInvariants();
+
+		reifyIntern();
+
+		reifyUnintern();
 
 		clinit();
 

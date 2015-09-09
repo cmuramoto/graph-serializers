@@ -14,8 +14,7 @@ public class CachedField {
 	String serializerIN;
 	boolean isReified;
 
-	public CachedField(String targetFieldName, String serializerIN,
-			boolean isReified) {
+	public CachedField(String targetFieldName, String serializerIN, boolean isReified) {
 		super();
 		this.targetFieldName = targetFieldName;
 		this.serializerIN = serializerIN;
@@ -24,28 +23,23 @@ public class CachedField {
 
 	public void invokeWrite(MethodVisitor mv, FieldInfo fi) {
 		if (isReified) {
-			Symbols._R_invokeWrite(mv, serializerIN, fi.type(),
-					fi.disregardReference());
+			Symbols._R_invokeWrite(mv, serializerIN, fi.type(), fi.disregardReference(), fi.isInterned());
 		} else {
-			Symbols.invokeWriteWithOwner(mv, serializerIN,
-					fi.disregardReference());
+			Symbols.invokeWriteWithOwner(mv, serializerIN, fi.disregardReference(), fi.isInterned());
 		}
 	}
 
 	public void invokeWrite(MethodVisitor mv, FieldInfo fi, Type type) {
 		if (isReified) {
-			Symbols._R_invokeWrite(mv, serializerIN, type,
-					fi.disregardReference());
+			Symbols._R_invokeWrite(mv, serializerIN, type, fi.disregardReference(), fi.isInterned());
 		} else {
-			Symbols.invokeWriteWithOwner(mv, serializerIN,
-					fi.disregardReference());
+			Symbols.invokeWriteWithOwner(mv, serializerIN, fi.disregardReference(), fi.isInterned());
 		}
 	}
 
 	public void onStack(MethodVisitor mv, String owner) {
 		if (!isReified) {
-			mv.visitFieldInsn(GETSTATIC, owner, targetFieldName,
-					serializerDesc());
+			mv.visitFieldInsn(GETSTATIC, owner, targetFieldName, serializerDesc());
 		}
 	}
 

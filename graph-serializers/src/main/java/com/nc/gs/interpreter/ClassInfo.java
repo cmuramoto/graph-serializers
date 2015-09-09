@@ -17,12 +17,12 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import com.nc.gs.util.Utils;
+
 import symbols.io.abstraction._Meta;
 import symbols.io.abstraction._Tags;
 import symbols.java.lang._Class;
 import symbols.java.lang._Object;
-
-import com.nc.gs.util.Utils;
 
 public final class ClassInfo extends ClassVisitor {
 
@@ -293,9 +293,7 @@ public final class ClassInfo extends ClassVisitor {
 
 				long consumed = 0;
 
-				for (int j = 0; j < descs.length; j++) {
-					String ctorArg = descs[j];
-
+				for (String ctorArg : descs) {
 					for (int i = cons; i < args.length; i++) {
 						if ((consumed & (1 << i)) != 0) {
 							continue;
@@ -438,12 +436,22 @@ public final class ClassInfo extends ClassVisitor {
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		if (!visible) {
-			if (desc.equals(_Meta.Fields.desc)) {
+			switch (desc) {
+			case _Meta.Fields.desc:
 				return new Fields(this);
-			} else if (desc.equals(_Meta.Serialized.desc)) {
+			case _Meta.Serialized.desc:
 				return new Serialized();
-			} else if (desc.equals(_Meta.LeafNode.desc)) {
+			case _Meta.LeafNode.desc:
 				info.access |= _Tags.ExtendedType.ACC_LEAF;
+				break;
+			case _Meta.OnlyPayload.desc:
+				info.access |= _Tags.ExtendedType.ACC_ONLY_DATA;
+				break;
+			case _Meta.Intern.desc:
+				info.access |= _Tags.ExtendedType.ACC_INTERNED;
+				break;
+			default:
+				break;
 			}
 		}
 

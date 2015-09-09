@@ -40,18 +40,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
-import symbols.io.abstraction._CollectionSerializer;
-import symbols.io.abstraction._Context;
-import symbols.io.abstraction._GraphSerializer;
-import symbols.io.abstraction._SerializerFactory;
-import symbols.io.abstraction._Tags;
-import symbols.io.abstraction._Tags.ObjectShape;
-import symbols.java.lang._Class;
-import symbols.java.lang._Object;
-import symbols.java.util._Collection;
-import symbols.java.util._List;
-import symbols.java.util._Set;
-
 import com.nc.gs.core.GraphClassLoader;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.Instantiator;
@@ -65,6 +53,18 @@ import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.interpreter.VisitationContext;
 import com.nc.gs.log.Log;
 import com.nc.gs.util.Utils;
+
+import symbols.io.abstraction._CollectionSerializer;
+import symbols.io.abstraction._Context;
+import symbols.io.abstraction._GraphSerializer;
+import symbols.io.abstraction._SerializerFactory;
+import symbols.io.abstraction._Tags;
+import symbols.io.abstraction._Tags.ObjectShape;
+import symbols.java.lang._Class;
+import symbols.java.lang._Object;
+import symbols.java.util._Collection;
+import symbols.java.util._List;
+import symbols.java.util._Set;
 
 public class MultiCSOptimizer extends ClassVisitor {
 
@@ -133,7 +133,7 @@ public class MultiCSOptimizer extends ClassVisitor {
 				ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
 
 				MultiCSOptimizer opt = new MultiCSOptimizer(cw);
-				ICSlot slot = new ICSlot(targetName, GS_PREF, h, IC_WRITE, IC_READ, shape.disregardRefs());
+				ICSlot slot = new ICSlot(targetName, GS_PREF, h, IC_WRITE, IC_READ, shape.disregardRefs(), false);
 				opt.slot = slot;
 				opt.suffix = suf;
 				opt.ctr = ctor == null ? null : Type.getType(ctor.getClass());

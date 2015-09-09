@@ -42,13 +42,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
-import symbols.io.abstraction._GraphSerializer;
-import symbols.io.abstraction._MapSerializer;
-import symbols.io.abstraction._SerializerFactory;
-import symbols.io.abstraction._Tags;
-import symbols.java.lang._Class;
-import symbols.java.util._Map;
-
 import com.nc.gs.core.GraphClassLoader;
 import com.nc.gs.core.GraphSerializer;
 import com.nc.gs.core.Instantiator;
@@ -63,6 +56,13 @@ import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.interpreter.VisitationContext;
 import com.nc.gs.log.Log;
 import com.nc.gs.util.Utils;
+
+import symbols.io.abstraction._GraphSerializer;
+import symbols.io.abstraction._MapSerializer;
+import symbols.io.abstraction._SerializerFactory;
+import symbols.io.abstraction._Tags;
+import symbols.java.lang._Class;
+import symbols.java.util._Map;
 
 public class MultiMSOptimizer extends ClassVisitor {
 
@@ -112,8 +112,8 @@ public class MultiMSOptimizer extends ClassVisitor {
 				ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
 
 				MultiMSOptimizer opt = new MultiMSOptimizer(cw);
-				ICSlot ks = new ICSlot(targetName, KGS_PREF, kh, ICK_W, ICK_R, sk.disregardRefs());
-				ICSlot vs = new ICSlot(targetName, VGS_PREF, vh, ICV_W, ICV_R, sv.disregardRefs());
+				ICSlot ks = new ICSlot(targetName, KGS_PREF, kh, ICK_W, ICK_R, sk.disregardRefs(), false);
+				ICSlot vs = new ICSlot(targetName, VGS_PREF, vh, ICV_W, ICV_R, sv.disregardRefs(), false);
 
 				opt.ks = ks;
 				opt.vs = vs;

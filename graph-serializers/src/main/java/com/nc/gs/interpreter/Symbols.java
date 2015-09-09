@@ -54,6 +54,8 @@ import symbols.sun.misc._Unsafe;
 
 public final class Symbols {
 
+	static final Class<?>[] PM = { void.class, boolean.class, char.class, byte.class, short.class, int.class, float.class, long.class, double.class };
+
 	public static String _R_collectionSerializer(String name) {
 
 		return _CollectionSerializer._R_prefix + name;
@@ -63,34 +65,34 @@ public final class Symbols {
 		return String.format("(%s%s%s)V", _Context.desc, _Source.desc, pojoDesc);
 	}
 
-	public static void _R_invokeRead(MethodVisitor mv, String owner, ExtendedType et, boolean onlyPayload) {
-		_R_invokeRead(mv, owner, et.desc, onlyPayload);
+	public static void _R_invokeRead(MethodVisitor mv, String owner, ExtendedType et, boolean onlyPayload, boolean intern) {
+		_R_invokeRead(mv, owner, et.desc, onlyPayload, intern);
 	}
 
-	public static void _R_invokeRead(MethodVisitor mv, String owner, String desc, boolean onlyPayload) {
-		String target = onlyPayload ? _R_.readOpaque : _R_.read;
+	public static void _R_invokeRead(MethodVisitor mv, String owner, String desc, boolean onlyPayload, boolean isInterned) {
+		final String target = isInterned ? _R_.intern : onlyPayload ? _R_.readOpaque : _R_.read;
 
 		mv.visitMethodInsn(INVOKESTATIC, owner, target, _R_readDataDesc(desc), false);
 	}
 
-	public static void _R_invokeRead(MethodVisitor mv, String owner, Type type, boolean onlyPayload) {
-		_R_invokeRead(mv, owner, type.getDescriptor(), onlyPayload);
+	public static void _R_invokeRead(MethodVisitor mv, String owner, Type type, boolean onlyPayload, boolean intern) {
+		_R_invokeRead(mv, owner, type.getDescriptor(), onlyPayload, intern);
 	}
 
-	public static void _R_invokeWrite(MethodVisitor mv, String owner, ExtendedType type, boolean onlyPayload) {
+	public static void _R_invokeWrite(MethodVisitor mv, String owner, ExtendedType type, boolean onlyPayload, boolean intern) {
 
-		_R_invokeWrite(mv, owner, _R_writeDataDesc(type.desc), onlyPayload);
+		_R_invokeWrite(mv, owner, _R_writeDataDesc(type.desc), onlyPayload, intern);
 	}
 
-	public static void _R_invokeWrite(MethodVisitor mv, String owner, String desc, boolean onlyPayload) {
+	public static void _R_invokeWrite(MethodVisitor mv, String owner, String desc, boolean onlyPayload, boolean intern) {
 
-		String target = onlyPayload ? _R_.writeData : _R_.write;
+		String target = intern ? _R_.intern : onlyPayload ? _R_.writeData : _R_.write;
 
 		mv.visitMethodInsn(INVOKESTATIC, owner, target, desc, false);
 	}
 
-	public static void _R_invokeWrite(MethodVisitor mv, String owner, Type type, boolean onlyPayload) {
-		_R_invokeWrite(mv, owner, _R_writeDataDesc(type.getDescriptor()), onlyPayload);
+	public static void _R_invokeWrite(MethodVisitor mv, String owner, Type type, boolean onlyPayload, boolean intern) {
+		_R_invokeWrite(mv, owner, _R_writeDataDesc(type.getDescriptor()), onlyPayload, intern);
 	}
 
 	public static String _R_optimizedArrayName(String type, ExtendedType[] compTypes, com.nc.gs.interpreter.Shape s) {
@@ -107,7 +109,7 @@ public final class Symbols {
 	public static String _R_optimizedCollectionName(String colIN, ExtendedType[] compTypes, com.nc.gs.interpreter.Shape s, boolean forRep) {
 		String template = compTypes.length == 1 ? s.isCompressed() ? _Tags.CSOptimizer.CN_TEMPLATE_C : _Tags.CSOptimizer.CN_TEMPLATE : s.isCompressed() ? _Tags.MultiCSOptimizer.CN_TEMPLATE_C : _Tags.MultiCSOptimizer.CN_TEMPLATE;
 
-		return String.format(template, colIN == null ? "POLY" : abbrevCN(colIN, '_'),//
+		return String.format(template, colIN == null ? "POLY" : abbrevCN(colIN, '_'), //
 				forRep ? "$R$" : "", abbrevCNs(compTypes, "", "|", true, !s.isHierarchyComplete()), s.nullSymbol(), s.refSymbol());
 	}
 
@@ -272,39 +274,55 @@ public final class Symbols {
 	}
 
 	public static void invokeReadReified(MethodVisitor mv, String sN, FieldInfo fi) {
-		String target = fi.disregardReference() ? _R_.readOpaque : _R_.read;
+		final String target = fi.isInterned() ? _R_.unintern : fi.disregardReference() ? _R_.readOpaque : _R_.read;
 
 		mv.visitMethodInsn(INVOKESTATIC, sN, target, fi.readInlineDesc(), false);
 	}
 
-	public static void invokeReadWithOwner(MethodVisitor mv, String sN, boolean op) {
-		String target = op ? _GraphSerializer.readOpaque : _GraphSerializer.read;
+	public static void invokeReadWithOwner(MethodVisitor mv, String sN, boolean op, boolean interned) {
+		String target;
+		String desc;
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, sN, target, _GraphSerializer.read_D, false);
+		if (interned) {
+			target = _GraphSerializer.unintern;
+			desc = _GraphSerializer.unintern_D;
+		} else {
+			target = op ? _GraphSerializer.readOpaque : _GraphSerializer.read;
+			desc = _GraphSerializer.read_D;
+		}
+
+		mv.visitMethodInsn(INVOKEVIRTUAL, sN, target, desc, false);
 	}
 
 	public static void invokeReadWithOwner(MethodVisitor mv, String sN, FieldInfo fi) {
-		invokeReadWithOwner(mv, sN, fi.disregardReference());
+		invokeReadWithOwner(mv, sN, fi.disregardReference(), fi.isInterned());
 	}
 
-	public static void invokeWrite(MethodVisitor mv, boolean onlyPayload) {
-		invokeWriteWithOwner(mv, _GraphSerializer.name, onlyPayload);
+	public static void invokeWrite(MethodVisitor mv, boolean onlyPayload, boolean interned) {
+		invokeWriteWithOwner(mv, _GraphSerializer.name, onlyPayload, interned);
 	}
 
 	public static void invokeWriteNested(MethodVisitor mv) {
 		mv.visitMethodInsn(INVOKESTATIC, _GraphSerializer.name, _GraphSerializer.writeNested, _GraphSerializer.write_D, false);
 	}
 
-	public static void invokeWriteWithOwner(MethodVisitor mv, String sN, boolean onlyPayload) {
+	public static void invokeWriteWithOwner(MethodVisitor mv, String sN, boolean onlyPayload, boolean interned) {
 		String target;
+		String desc;
 
-		if (onlyPayload) {
-			target = _GraphSerializer.writeData;
+		if (!interned) {
+			if (onlyPayload) {
+				target = _GraphSerializer.writeData;
+			} else {
+				target = _GraphSerializer.write;
+			}
+			desc = _GraphSerializer.write_D;
 		} else {
-			target = _GraphSerializer.write;
+			target = _GraphSerializer.intern;
+			desc = _GraphSerializer.intern_D;
 		}
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, sN, target, _GraphSerializer.write_D, false);
+		mv.visitMethodInsn(INVOKEVIRTUAL, sN, target, desc, false);
 	}
 
 	public static void loadAndBox(final MethodVisitor mv, final Type type, final int stackIndex) {
@@ -468,28 +486,28 @@ public final class Symbols {
 		}
 	}
 
-	public static void nullSafeRead(MethodVisitor mv, boolean op) {
+	public static void nullSafeRead(MethodVisitor mv, boolean op, boolean interned) {
 
-		String target = op ? _Context.readTypeAndData : _Context.readRefAndData;
+		String target = interned ? _Context.unintern : op ? _Context.readTypeAndData : _Context.readRefAndData;
 
 		mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, target, _Context.readNested_D, false);
 	}
 
 	public static void nullSafeRead(MethodVisitor mv, FieldInfo fi) {
 
-		nullSafeRead(mv, fi.disregardReference());
+		nullSafeRead(mv, fi.disregardReference(), fi.isInterned());
 	}
 
-	public static void nullSafeWrite(MethodVisitor mv, boolean op) {
+	public static void nullSafeWrite(MethodVisitor mv, boolean op, boolean interned) {
 
-		String target = op ? _Context.writeTypeAndData : _Context.writeRefAndData;
+		String target = interned ? _Context.intern : op ? _Context.writeTypeAndData : _Context.writeRefAndData;
 
 		mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, target, _Context.writeNested_D, false);
 	}
 
 	public static void nullSafeWrite(MethodVisitor mv, FieldInfo fi) {
 
-		nullSafeWrite(mv, fi.disregardReference());
+		nullSafeWrite(mv, fi.disregardReference(), fi.isInterned());
 	}
 
 	public static String optimizedCollectionResource(boolean nullable, boolean op, boolean ra) {
@@ -864,7 +882,7 @@ public final class Symbols {
 	}
 
 	public static String reifiedReadDesc(Type t) {
-		return String.format("(%s%s)%s", _Context.desc, _Sink.desc, t.getDescriptor());
+		return String.format("(%s%s)%s", _Context.desc, _Source.desc, t.getDescriptor());
 	}
 
 	private static String reifiedReadPayloadDesc(Type t) {
@@ -1227,6 +1245,4 @@ public final class Symbols {
 			}
 		}
 	}
-
-	static final Class<?>[] PM = { void.class, boolean.class, char.class, byte.class, short.class, int.class, float.class, long.class, double.class };
 }

@@ -13,13 +13,21 @@ import java.nio.MappedByteBuffer;
 
 import org.objectweb.asm.Type;
 
-import sun.misc.Unsafe;
-
 import com.nc.gs.util.Bits;
 import com.nc.gs.util.Utils;
 
+import sun.misc.Unsafe;
+
 @SuppressWarnings("restriction")
 public final class Source extends InputStream implements Closeable, DataInput {
+
+	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
+
+	static final long ARRAY_CHAR_BASE_OFFSET = sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
+
+	static final int MAX_ASCII = 0x7F;
+
+	static RuntimeException W = new RuntimeException("Wrong VLen Encoding");
 
 	static final boolean isAsciiTuple(int s) {
 		return (s & 0XFF) <= 0X7F && (s >> 8 & 0XFF) <= 0X7F;
@@ -51,12 +59,6 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		return l & 0xFF | (l & 0XFF00) << 8 | (l & 0XFF0000) << 16 | (l & 0xFF000000) << 24;
 	}
 
-	static final long ADDRESS_OFF = Utils.fieldOffset(Buffer.class, "address");
-
-	static final long ARRAY_CHAR_BASE_OFFSET = sun.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
-
-	static final int MAX_ASCII = 0x7F;
-
 	byte[] chunk;
 
 	protected boolean disposable;
@@ -72,8 +74,6 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	protected int mark;
 
 	protected int lim;
-
-	static RuntimeException W = new RuntimeException("Wrong VLen Encoding");
 
 	public Source() {
 		this(4096);
@@ -192,7 +192,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 	}
 
 	private void fillGuard(int req) {
-		if (req > lim) {
+		if (req > (lim - pos)) {
 			int newLim = Utils.nextPowerOfTwo(lim + req);
 			base = Bits.reallocateMemory(base, newLim);
 			lim = newLim;

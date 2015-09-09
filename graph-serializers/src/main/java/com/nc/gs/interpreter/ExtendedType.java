@@ -32,7 +32,11 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import com.nc.gs.log.Log;
+import com.nc.gs.util.Utils;
+
 import symbols.io.abstraction._Meta;
+import symbols.io.abstraction._Tags;
 import symbols.java.lang._Class;
 import symbols.java.lang._Iterable;
 import symbols.java.lang._Number;
@@ -42,9 +46,6 @@ import symbols.java.util._EnumSet;
 import symbols.java.util._List;
 import symbols.java.util._Map;
 import symbols.java.util._Set;
-
-import com.nc.gs.log.Log;
-import com.nc.gs.util.Utils;
 
 public final class ExtendedType implements Comparable<ExtendedType> {
 
@@ -151,6 +152,63 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 			info.access |= ACC_INNER;
 		}
 
+	}
+
+	static final Class<?>[] PM = { boolean.class, byte.class, char.class, short.class, int.class, float.class, double.class };
+
+	static String[] EMPTY = new String[0];
+
+	static final ExtendedType OBJECT;
+
+	static final ExtendedType BOOLEAN;
+
+	static final ExtendedType BYTE;
+
+	static final ExtendedType SHORT;
+
+	static final ExtendedType CHAR;
+
+	static final ExtendedType INT;
+
+	static final ExtendedType FLOAT;
+
+	static final ExtendedType LONG;
+
+	static final ExtendedType DOUBLE;
+
+	static final ExtendedType COLLECTION;
+
+	static final ExtendedType LIST;
+
+	static final ExtendedType SET;
+
+	static final ExtendedType MAP;
+	static final ExtendedType ENUM_SET;
+	static final ExtendedType ENUM_MAP;
+	static final Pattern SYSTEM_RESOURCES;
+
+	static {
+		BOOLEAN/**/ = prim(_Number.boolean_D);
+		CHAR/*   */ = prim(_Number.char_D);
+		BYTE/*   */ = prim(_Number.byte_D);
+		SHORT/*  */ = prim(_Number.short_D);
+		INT/*    */ = prim(_Number.int_D);
+		FLOAT/*  */ = prim(_Number.float_D);
+		LONG/*   */ = prim(_Number.long_D);
+		DOUBLE/* */ = prim(_Number.double_D);
+
+		OBJECT = new ExtendedType(ACC_PUBLIC, _Object.name, null, null, null);
+
+		COLLECTION/**/ = intf(_Collection.name, _Iterable.name);
+		LIST/*      */ = intf(_List.name, _Collection.name, _Iterable.name);
+		MAP/*       */ = intf(_Map.name);
+		SET/*       */ = intf(_Set.name, _Collection.name, _Iterable.name);
+
+		ENUM_SET = type(_EnumSet.name, _Set.abstractIN, _Set.name, _Collection.name, _Iterable.name);
+
+		ENUM_MAP = type(_EnumSet.name, _Map.abstractIN, _Map.name);
+
+		SYSTEM_RESOURCES = Pattern.compile("(java/|javax/|sun/|com/sun/|com/oracle/)");
 	}
 
 	static ExtendedType basicOrNull(String name) {
@@ -348,72 +406,16 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		return new ExtendedType(ACC_PUBLIC, name, parent, null, intf);
 	}
 
-	static final Class<?>[] PM = { boolean.class, byte.class, char.class, short.class, int.class, float.class, double.class };
-	static String[] EMPTY = new String[0];
-	static final ExtendedType OBJECT;
-	static final ExtendedType BOOLEAN;
-	static final ExtendedType BYTE;
-
-	static final ExtendedType SHORT;
-
-	static final ExtendedType CHAR;
-
-	static final ExtendedType INT;
-
-	static final ExtendedType FLOAT;
-
-	static final ExtendedType LONG;
-
-	static final ExtendedType DOUBLE;
-
-	static final ExtendedType COLLECTION;
-
-	static final ExtendedType LIST;
-
-	static final ExtendedType SET;
-
-	static final ExtendedType MAP;
-
-	static final ExtendedType ENUM_SET;
-
-	static final ExtendedType ENUM_MAP;
-
-	static final Pattern SYSTEM_RESOURCES;
-
-	static {
-		BOOLEAN/**/= prim(_Number.boolean_D);
-		CHAR/*   */= prim(_Number.char_D);
-		BYTE/*   */= prim(_Number.byte_D);
-		SHORT/*  */= prim(_Number.short_D);
-		INT/*    */= prim(_Number.int_D);
-		FLOAT/*  */= prim(_Number.float_D);
-		LONG/*   */= prim(_Number.long_D);
-		DOUBLE/* */= prim(_Number.double_D);
-
-		OBJECT = new ExtendedType(ACC_PUBLIC, _Object.name, null, null, null);
-
-		COLLECTION/**/= intf(_Collection.name, _Iterable.name);
-		LIST/*      */= intf(_List.name, _Collection.name, _Iterable.name);
-		MAP/*       */= intf(_Map.name);
-		SET/*       */= intf(_Set.name, _Collection.name, _Iterable.name);
-
-		ENUM_SET = type(_EnumSet.name, _Set.abstractIN, _Set.name, _Collection.name, _Iterable.name);
-
-		ENUM_MAP = type(_EnumSet.name, _Map.abstractIN, _Map.name);
-
-		SYSTEM_RESOURCES = Pattern.compile("(java/|javax/|sun/|com/sun/|com/oracle/)");
-	}
-
 	public long access;
-	public final String name;
-	public final String desc;
 
+	public final String name;
+
+	public final String desc;
 	public final String superName;
 	public final String signature;
+
 	public String[] interfaces;
-
 	String packageName;
-
 	Type type;
 
 	ExtendedType parent;
@@ -738,6 +740,14 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		}
 
 		return rv;
+	}
+
+	public boolean propagateInterned() {
+		return (access & _Tags.ExtendedType.ACC_INTERNED) != 0;
+	}
+
+	public boolean propagateOnlyPayload() {
+		return (access & _Tags.ExtendedType.ACC_ONLY_DATA) != 0;
 	}
 
 	public Class<?> runtimeType() {

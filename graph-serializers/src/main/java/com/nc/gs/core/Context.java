@@ -18,7 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.nc.gs.ds.ClassTable;
-import com.nc.gs.ds.IdentityMap;
+import com.nc.gs.ds.L2IMap;
+import com.nc.gs.ds.OOP2IMap;
 import com.nc.gs.io.In;
 import com.nc.gs.io.Out;
 import com.nc.gs.io.Sink;
@@ -136,6 +137,63 @@ public final class Context implements AutoCloseable {
 			dst.flushTo(output, hb);
 		}
 
+	}
+
+	public static final ConcurrentHashMap<Class<?>, Object> C_TYPES;
+
+	private static final ConcurrentLinkedQueue<Context> POOL;
+
+	static final ClassTable ct;
+
+	public static final Comparator<Class<?>> NAME_CMP = (l, r) -> l.getName().compareTo(r.getName());
+
+	public static final ConcurrentSkipListMap<Object, Class<?>> P_TYPES;
+
+	public static final ConcurrentHashMap<Class<?>, Class<?>> R_TYPES;
+
+	static {
+		Comparator<Object> A_NAME_CMP = (left, right) -> {
+			int rv = 0;
+
+			if (left instanceof String) {
+				if (right instanceof String) {
+					if (left != right) {
+						rv = ((String) left).compareTo((String) right);
+					}
+				} else {
+					rv = -1;
+				}
+			} else if (right instanceof String) {
+				rv = 1;
+			} else {
+				Class<?>[] l = (Class<?>[]) left;
+				Class<?>[] r = (Class<?>[]) right;
+				if (l != r) {
+					int ll = l.length;
+					int rl = r.length;
+
+					if (ll > rl) {
+						rv = -1;
+					} else if (rl > ll) {
+						rv = 1;
+					} else {
+						for (int i = 0; i < ll; i++) {
+							if ((rv = l[i].getName().compareTo(r[i].getName())) != 0) {
+								break;
+							}
+						}
+					}
+				}
+			}
+			return rv;
+		};
+		POOL = new ConcurrentLinkedQueue<>();
+		C_TYPES = new ConcurrentHashMap<>();
+		R_TYPES = new ConcurrentHashMap<>();
+		P_TYPES = new ConcurrentSkipListMap<>(A_NAME_CMP);
+
+		Utils.U.ensureClassInitialized(Genesis.class);
+		ct = Genesis.getClassTableImpl();
 	}
 
 	private static Context borrow() {
@@ -271,74 +329,31 @@ public final class Context implements AutoCloseable {
 		return c;
 	}
 
-	public static final ConcurrentHashMap<Class<?>, Object> C_TYPES;
-
-	private static final ConcurrentLinkedQueue<Context> POOL;
-
-	static final ClassTable ct;
-
-	public static final Comparator<Class<?>> NAME_CMP = (l, r) -> l.getName().compareTo(r.getName());
-
-	public static final ConcurrentSkipListMap<Object, Class<?>> P_TYPES;
-
-	public static final ConcurrentHashMap<Class<?>, Class<?>> R_TYPES;
-
-	static {
-		Comparator<Object> A_NAME_CMP = (left, right) -> {
-			int rv = 0;
-
-			if (left instanceof String) {
-				if (right instanceof String) {
-					if (left != right) {
-						rv = ((String) left).compareTo((String) right);
-					}
-				} else {
-					rv = -1;
-				}
-			} else if (right instanceof String) {
-				rv = 1;
-			} else {
-				Class<?>[] l = (Class<?>[]) left;
-				Class<?>[] r = (Class<?>[]) right;
-				if (l != r) {
-					int ll = l.length;
-					int rl = r.length;
-
-					if (ll > rl) {
-						rv = -1;
-					} else if (rl > ll) {
-						rv = 1;
-					} else {
-						for (int i = 0; i < ll; i++) {
-							if ((rv = l[i].getName().compareTo(r[i].getName())) != 0) {
-								break;
-							}
-						}
-					}
-				}
-			}
-			return rv;
-		};
-		POOL = new ConcurrentLinkedQueue<>();
-		C_TYPES = new ConcurrentHashMap<>();
-		R_TYPES = new ConcurrentHashMap<>();
-		P_TYPES = new ConcurrentSkipListMap<>(A_NAME_CMP);
-
-		Utils.U.ensureClassInitialized(Genesis.class);
-		ct = Genesis.getClassTableImpl();
-	}
-
 	Chunk chunk;
 
-	GraphSerializer[] gsCache = new GraphSerializer[32];
+	/**
+	 * Serializer Cache
+	 */
+	GraphSerializer[] gc = new GraphSerializer[32];
+	/**
+	 * Instantiator Cache
+	 */
+	Instantiator[] ic = new Instantiator[4];
 
-	Instantiator[] instCache = new Instantiator[4];
+	/**
+	 * Reference based Object to int (==)
+	 */
+	OOP2IMap<Object> m = new OOP2IMap<>(1024, .75f, -1);
+	/**
+	 * Similarity based Object to int (Object::equals)
+	 */
+	L2IMap<Object> i = new L2IMap<>();
 
-	IdentityMap<Object> m = new IdentityMap<>(256, .75f, -1);
-
+	int tr;
 	Object[] refs = new Object[256];
 
-	int maxId;
+	int ti;
+	Object[] interned = new Object[256];
 
 	boolean write;
 
@@ -359,20 +374,17 @@ public final class Context implements AutoCloseable {
 	public void clear() {
 		if (write) {
 			m.clear();
+			i.clear();
 		} else {
-			Bits.clearFast(refs, maxId);
-			maxId = 0;
+			Bits.clearFast(refs, tr);
+			Bits.clearFast(interned, ti);
+			tr = ti = 0;
 		}
 	}
 
 	@Override
 	public void close() {
-		if (write) {
-			m.clear();
-		} else {
-			Bits.clearFast(refs, maxId);
-			maxId = 0;
-		}
+		clear();
 
 		POOL.offer(this);
 	}
@@ -401,10 +413,10 @@ public final class Context implements AutoCloseable {
 
 	public final GraphSerializer forTypeId(int id) {
 		GraphSerializer rv;
-		GraphSerializer[] lc = gsCache;
+		GraphSerializer[] lc = gc;
 
 		if (id >= lc.length) {
-			lc = gsCache = Arrays.copyOf(lc, id + 64);
+			lc = gc = Arrays.copyOf(lc, id + 64);
 		}
 
 		rv = lc[id];
@@ -455,7 +467,7 @@ public final class Context implements AutoCloseable {
 		if (tId == 0) {
 			rv = SerializerFactory.instantiatorOf(type);
 		} else {
-			Instantiator[] cache = instCache;
+			Instantiator[] cache = ic;
 			int length = cache.length;
 
 			if (tId < length) {
@@ -466,12 +478,28 @@ public final class Context implements AutoCloseable {
 				}
 			} else {
 				rv = SerializerFactory.instantiatorOf(type);
-				cache = instCache = Arrays.copyOf(cache, tId << 1);
+				cache = ic = Arrays.copyOf(cache, tId << 1);
 				cache[tId] = rv;
 			}
 		}
 
 		return rv;
+	}
+
+	public void intern(Sink dst, GraphSerializer gs, Object o) {
+		if (!nullSafeInterned(dst, o)) {
+			gs.writeData(this, dst, o);
+		}
+	}
+
+	public void intern(Sink dst, Object o) {
+		if (!nullSafeInterned(dst, o)) {
+			writeTypeAndData(dst, o);
+		}
+	}
+
+	public final Object interned(int id) {
+		return interned[id - ID_BASE];
 	}
 
 	public boolean isReferenced(Object o) {
@@ -489,10 +517,32 @@ public final class Context implements AutoCloseable {
 			refs = this.refs = Arrays.copyOf(refs, Math.max(refs.length * 2, id + 64));
 		}
 
-		// maxId = Math.max(id, maxId);
-		maxId++;
-
+		tr++;
 		refs[id - ID_BASE] = o;
+	}
+
+	public final void markInterned(Object o, int id) {
+		Object[] ints = interned;
+
+		if (id > ints.length) {
+			ints = interned = Arrays.copyOf(ints, Math.max(ints.length * 2, id + 64));
+		}
+
+		ints[id - ID_BASE] = o;
+		ti++;
+	}
+
+	public boolean nullSafeInterned(Sink dst, Object o) {
+		int next = i.size();
+		int id = i.putIfAbsent(o, next);
+
+		if (id == -1) {
+			dst.writeVarInt(next + ID_BASE);
+			return false;
+		} else {
+			dst.writeVarInt(id + ID_BASE);
+			return true;
+		}
 	}
 
 	public boolean nullSafeVisited(Sink dst, Object o) {
@@ -605,6 +655,43 @@ public final class Context implements AutoCloseable {
 			}
 			rv = lookupOrCreate(types);
 		}
+		return rv;
+	}
+
+	public Object unintern(Source src) {
+		final int id = src.readVarInt();
+
+		Object rv = interned(id);
+
+		if (rv == null) {
+			final int tId = src.readVarInt() - TYPE_ID;
+
+			GraphSerializer gs;
+
+			if (tId == 0) {
+				gs = forType(resolveType(src));
+			} else {
+				gs = forTypeId(tId);
+			}
+			rv = gs.instantiate(src);
+			markInterned(rv, id);
+			gs.inflateData(this, src, rv);
+		}
+
+		return rv;
+	}
+
+	public Object unintern(Source src, GraphSerializer gs) {
+		final int id = src.readVarInt();
+
+		Object rv = interned(id);
+
+		if (rv == null) {
+			rv = gs.instantiate(src);
+			markInterned(rv, id);
+			gs.inflateData(this, src, rv);
+		}
+
 		return rv;
 	}
 

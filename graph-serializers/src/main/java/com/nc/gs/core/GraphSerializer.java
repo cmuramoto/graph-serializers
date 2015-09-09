@@ -7,6 +7,23 @@ import com.nc.gs.io.Source;
 
 public abstract class GraphSerializer {
 
+	public final void intern(Context c, Sink dst, Object o) {
+		if (!c.nullSafeInterned(dst, o)) {
+			writeData(c, dst, o);
+		}
+	}
+
+	public final Object unintern(Context c, Source src) {
+		final int id = src.readVarInt();
+		Object rv = c.interned(id);
+		if (rv == null) {
+			rv = instantiate(src);
+			c.markInterned(rv, id);
+			inflateData(c, src, rv);
+		}
+		return rv;
+	}
+
 	public void inflateData(Context c, Source src, Object o) {
 	}
 

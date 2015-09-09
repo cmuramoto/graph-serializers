@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function clean(){
     rm -f ./Release/*
 }
@@ -7,7 +9,7 @@ function compile(){
     echo "Building file: ../com_nc_gs_io_UTF8Util.c"
     echo "Invoking: GCC C Compiler"
     target="-D__GS__$1__"
-    cmd='gcc '$target' -O3 -Wall -Wunused-label -c -msse4.2 -mavx2 -fmessage-length=0 -MMD -MP -MF"Release/com_nc_gs_io_UTF8Util.d" -MT"Release/com_nc_gs_io_UTF8Util.d" -o "Release/com_nc_gs_io_UTF8Util.o" "../com_nc_gs_io_UTF8Util.c"'
+    cmd='gcc '$target' -O3 -Wall -Wunused-label -c -msse4.2 -mavx2 -fmessage-length=0 -MMD -MP -MF"Release/com_nc_gs_io_UTF8Util.d" -MT"Release/com_nc_gs_io_UTF8Util.d" -o "Release/com_nc_gs_io_UTF8Util.o" "com_nc_gs_io_UTF8Util.c"'
     echo $cmd
     eval $cmd
     echo "Finished building: ../com_nc_gs_io_UTF8Util.c"
@@ -35,6 +37,7 @@ function copy(){
 }
 
 function build(){
+    pushd ../ > /dev/null
     clean
     compile $1
     link $1

@@ -33,4 +33,20 @@ public interface _Context {
 	String readRefAndData = "readRefAndData";
 
 	String readTypeAndData = "readTypeAndData";
+
+	String interned = "interned";
+
+	String interned_D = from_D;
+
+	String markInterned = "markInterned";
+
+	String markInterned_D = "(Ljava/lang/Object;I)V";
+
+	String nullSafeInterned = "nullSafeInterned";
+
+	String nullSafeInterned_D = visited_D;
+
+	String intern = "intern";
+
+	String unintern = "unintern";
 }

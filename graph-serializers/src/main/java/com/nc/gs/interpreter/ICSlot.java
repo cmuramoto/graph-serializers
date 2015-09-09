@@ -45,10 +45,11 @@ public class ICSlot {
 	public String readName;
 	public String readDesc;
 	public boolean op;
+	public boolean intern;
 
 	// public boolean patchCacheMissWithFallback;
 
-	public ICSlot(String serializer, String gsp, Hierarchy h, String writeName, String readName, boolean op) {
+	public ICSlot(String serializer, String gsp, Hierarchy h, String writeName, String readName, boolean op, boolean intern) {
 		super();
 		this.serializer = serializer;
 		this.gsp = gsp;
@@ -56,6 +57,7 @@ public class ICSlot {
 		this.writeName = writeName;
 		this.readName = readName;
 		this.op = op;
+		this.intern = intern;
 	}
 
 	public void emitFieldDeclarations(MethodVisitor clinit) {
@@ -102,7 +104,7 @@ public class ICSlot {
 			mv.visitVarInsn(ALOAD, CTX_OFFSET);
 			mv.visitVarInsn(ALOAD, STR_OFFSET);
 			mv.visitVarInsn(ALOAD, REF_OFFSET);
-			Symbols.nullSafeWrite(mv, op);
+			Symbols.nullSafeWrite(mv, op, intern);
 			mv.visitInsn(RETURN);
 		} else {
 
@@ -150,14 +152,14 @@ public class ICSlot {
 				if (i < len) {
 
 					if ((h.reified & (1L << i)) == 0) {
-						Symbols.invokeWriteWithOwner(mv, h.sers[i].getInternalName(), op);
+						Symbols.invokeWriteWithOwner(mv, h.sers[i].getInternalName(), op, intern);
 					} else {
 						mv.visitTypeInsn(CHECKCAST, h.at(i).getInternalName());
 
-						Symbols._R_invokeWrite(mv, h.sers[i].getInternalName(), h.at(i), op);
+						Symbols._R_invokeWrite(mv, h.sers[i].getInternalName(), h.at(i), op, intern);
 					}
 				} else {
-					Symbols.nullSafeWrite(mv, op);
+					Symbols.nullSafeWrite(mv, op, intern);
 				}
 
 				if (l != null) {
@@ -181,7 +183,7 @@ public class ICSlot {
 			mv.visitVarInsn(ALOAD, CTX_OFFSET);
 			mv.visitVarInsn(ALOAD, STR_OFFSET);
 
-			Symbols.nullSafeRead(mv, op);
+			Symbols.nullSafeRead(mv, op, intern);
 
 			mv.visitInsn(ARETURN);
 		} else if (ng == 1) {
@@ -197,12 +199,12 @@ public class ICSlot {
 			mv.visitVarInsn(ALOAD, 1);
 
 			if ((h.reified & (1L)) == 0) {
-				Symbols.invokeReadWithOwner(mv, h.sers[0].getInternalName(), op);
+				Symbols.invokeReadWithOwner(mv, h.sers[0].getInternalName(), op, intern);
 				if (readDesc != null) {
 					mv.visitTypeInsn(CHECKCAST, h.at(0).name);
 				}
 			} else {
-				Symbols._R_invokeRead(mv, h.sers[0].getInternalName(), h.at(0), op);
+				Symbols._R_invokeRead(mv, h.sers[0].getInternalName(), h.at(0), op, intern);
 			}
 
 			mv.visitInsn(ARETURN);
@@ -236,15 +238,15 @@ public class ICSlot {
 
 				if (i < len) {
 					if ((h.reified & (1L << i)) == 0) {
-						Symbols.invokeReadWithOwner(mv, h.sers[i].getInternalName(), op);
+						Symbols.invokeReadWithOwner(mv, h.sers[i].getInternalName(), op, intern);
 						if (readDesc != null) {
 							mv.visitTypeInsn(CHECKCAST, h.at(i).name);
 						}
 					} else {
-						Symbols._R_invokeRead(mv, h.sers[i].getInternalName(), h.at(i), op);
+						Symbols._R_invokeRead(mv, h.sers[i].getInternalName(), h.at(i), op, intern);
 					}
 				} else {
-					Symbols.nullSafeRead(mv, op);
+					Symbols.nullSafeRead(mv, op, intern);
 					if (readDesc != null) {
 						mv.visitTypeInsn(CHECKCAST, h.superType.name);
 					}
