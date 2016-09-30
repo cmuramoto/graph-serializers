@@ -183,10 +183,11 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	static final ExtendedType SET;
 
 	static final ExtendedType MAP;
+
 	static final ExtendedType ENUM_SET;
+
 	static final ExtendedType ENUM_MAP;
 	static final Pattern SYSTEM_RESOURCES;
-
 	static {
 		BOOLEAN/**/ = prim(_Number.boolean_D);
 		CHAR/*   */ = prim(_Number.char_D);
@@ -411,15 +412,15 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 	public final String name;
 
 	public final String desc;
-	public final String superName;
-	public final String signature;
 
+	public final String superName;
+
+	public final String signature;
 	public String[] interfaces;
 	String packageName;
+
 	Type type;
-
 	ExtendedType parent;
-
 	Set<ExtendedType> children;
 
 	public ExtendedType(int access, String name, String superName, String signature, String[] interfaces) {
@@ -530,6 +531,20 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		}
 
 		return rv;
+	}
+
+	public int dimension() {
+		int dim = 0;
+		if (isArray()) {
+			for (int i = 0;; i++) {
+				if (name.charAt(i) == '[') {
+					dim++;
+				} else {
+					break;
+				}
+			}
+		}
+		return dim;
 	}
 
 	@Override
@@ -713,6 +728,39 @@ public final class ExtendedType implements Comparable<ExtendedType> {
 		}
 
 		return p;
+	}
+
+	public int newArrayOpcode() {
+		int rv;
+		switch (getSort()) {
+		case Type.BOOLEAN:
+			rv = Opcodes.T_BOOLEAN;
+			break;
+		case Type.BYTE:
+			rv = Opcodes.T_BYTE;
+			break;
+		case Type.SHORT:
+			rv = Opcodes.T_SHORT;
+			break;
+		case Type.CHAR:
+			rv = Opcodes.T_CHAR;
+			break;
+		case Type.INT:
+			rv = Opcodes.T_INT;
+			break;
+		case Type.FLOAT:
+			rv = Opcodes.T_FLOAT;
+			break;
+		case Type.LONG:
+			rv = Opcodes.T_LONG;
+			break;
+		case Type.DOUBLE:
+			rv = Opcodes.T_DOUBLE;
+			break;
+		default:
+			rv = 0;
+		}
+		return rv;
 	}
 
 	public String packageName() {

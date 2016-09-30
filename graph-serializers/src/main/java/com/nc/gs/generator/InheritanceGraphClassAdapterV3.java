@@ -4,17 +4,20 @@ import static org.objectweb.asm.Opcodes.AALOAD;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.ARRAYLENGTH;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.CHECKCAST;
 import static org.objectweb.asm.Opcodes.GETFIELD;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.IAND;
 import static org.objectweb.asm.Opcodes.IFEQ;
+import static org.objectweb.asm.Opcodes.IFNONNULL;
 import static org.objectweb.asm.Opcodes.IFNULL;
 import static org.objectweb.asm.Opcodes.ILOAD;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.ISTORE;
+import static org.objectweb.asm.Opcodes.NEWARRAY;
 import static org.objectweb.asm.Opcodes.PUTFIELD;
 import static org.objectweb.asm.Opcodes.RETURN;
 import static symbols.io.abstraction._GraphSerializer._R_.CTX_OFFSET;
@@ -31,11 +34,13 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
 import com.nc.gs.interpreter.ClassInfo;
+import com.nc.gs.interpreter.ExtendedType;
 import com.nc.gs.interpreter.FieldInfo;
 import com.nc.gs.interpreter.SpecialField;
 import com.nc.gs.interpreter.Symbols;
 import com.nc.gs.util.Utils;
 
+import symbols.io.abstraction._Context;
 import symbols.io.abstraction._GraphSerializer._R_;
 import symbols.io.abstraction._Sink;
 import symbols.io.abstraction._Source;
@@ -68,12 +73,72 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 		return false;
 	}
 
+	private void doPrimitiveArray(MethodVisitor mv, FieldInfo fi, int arrayIx, boolean accessible) {
+		ExtendedType et = fi.type().basicComponentType();
+
+		if (fi.disregardReference()) {
+			mv.visitVarInsn(ALOAD, STR_OFFSET);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Source.Decompressor, _Source.unpackI, _Source.unpackI_D, false);
+			mv.visitIntInsn(NEWARRAY, et.newArrayOpcode());
+			mv.visitVarInsn(ASTORE, arrayIx);
+
+		} else {
+			mv.visitVarInsn(ALOAD, STR_OFFSET);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Source.Decompressor, _Source.unpackI, _Source.unpackI_D, false);
+			mv.visitVarInsn(ISTORE, arrayIx + 1);
+
+			mv.visitVarInsn(ALOAD, CTX_OFFSET);
+			mv.visitVarInsn(ILOAD, arrayIx + 1);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, _Context.from, _Context.from_D, false);
+			mv.visitVarInsn(ASTORE, arrayIx);
+
+			mv.visitVarInsn(ALOAD, arrayIx);
+
+			Label isNull = new Label();
+			mv.visitJumpInsn(IFNONNULL, isNull);
+
+			mv.visitVarInsn(ALOAD, STR_OFFSET);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Source.name, _Source.unpackI, _Source.unpackI_D, false);
+			mv.visitIntInsn(NEWARRAY, et.newArrayOpcode());
+			mv.visitVarInsn(ASTORE, arrayIx);
+
+			mv.visitVarInsn(ALOAD, CTX_OFFSET);
+			mv.visitVarInsn(ALOAD, arrayIx);
+			mv.visitVarInsn(ILOAD, arrayIx + 1);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Context.name, _Context.mark, _Context.mark_D, false);
+
+			mv.visitLabel(isNull);
+		}
+
+		mv.visitVarInsn(ALOAD, STR_OFFSET);
+		mv.visitVarInsn(ALOAD, arrayIx);
+		mv.visitTypeInsn(CHECKCAST, fi.type().desc);
+		mv.visitMethodInsn(INVOKEVIRTUAL, _Source.name, _Source.inflate, "(" + fi.type().desc + ")V", false);
+
+		if (accessible) {
+			mv.visitVarInsn(ALOAD, REF_OFFSET);
+			mv.visitVarInsn(ALOAD, arrayIx);
+			mv.visitTypeInsn(CHECKCAST, fi.type().desc);
+			mv.visitFieldInsn(PUTFIELD, fi.owner().name, fi.name, fi.desc);
+		} else {
+			mv.visitVarInsn(ALOAD, U_OFFSET);
+			mv.visitVarInsn(ALOAD, REF_OFFSET);
+			mv.visitLdcInsn(fi.objectFieldOffset());
+			mv.visitVarInsn(ALOAD, arrayIx);
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.putObject, _Unsafe.putObject_D, false);
+		}
+	}
+
 	private void implementReadNonNull(MethodVisitor mv, boolean needsUnsafe) {
 		List<FieldInfo> infos = nonNullable;
 
 		if (infos == null || infos.isEmpty()) {
 			return;
 		}
+
+		final List<FieldInfo> nulls = nullable;
+		final int baseOffset = needsUnsafe ? 3 : 2;
+		final int storeIx = (nulls == null || nulls.isEmpty()) ? baseOffset + 1 : baseOffset + 2;
 
 		for (FieldInfo fi : infos) {
 			// push value on stack, but don't map it to a local var
@@ -88,6 +153,8 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					mv.visitInsn(AALOAD);
 
 					mv.visitFieldInsn(PUTFIELD, fi.owner().name, fi.name, fi.desc);
+				} else if (fi.isOneDimensionPrimitiveArray()) {
+					doPrimitiveArray(mv, fi, storeIx, true);
 				} else if (fi.isWrapper()) {
 					mv.visitVarInsn(ALOAD, REF_OFFSET);
 					mv.visitVarInsn(ALOAD, STR_OFFSET);
@@ -161,6 +228,8 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					mv.visitInsn(AALOAD);
 
 					mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.putObject, _Unsafe.putObject_D, false);
+				} else if (fi.isOneDimensionPrimitiveArray()) {
+					doPrimitiveArray(mv, fi, storeIx, false);
 				} else if (fi.isWrapper()) {
 					mv.visitVarInsn(ALOAD, U_OFFSET);
 					mv.visitVarInsn(ALOAD, REF_OFFSET);
@@ -245,6 +314,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
 		int baseOffset = unsafeOnStack ? 3 : 2;
 		int flIx = baseOffset + 1;
+		final int storeIx = flIx + 1;
 
 		List<List<FieldInfo>> partition = Utils.partition(infos, 16);
 
@@ -278,6 +348,8 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 						mv.visitInsn(AALOAD);
 
 						mv.visitFieldInsn(PUTFIELD, fi.owner().name, fi.name, fi.desc);
+					} else if (fi.isOneDimensionPrimitiveArray()) {
+						doPrimitiveArray(mv, fi, storeIx, true);
 					} else if (fi.isWrapper()) {
 						mv.visitVarInsn(ALOAD, REF_OFFSET);
 						mv.visitVarInsn(ALOAD, STR_OFFSET);
@@ -347,6 +419,8 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 						mv.visitInsn(AALOAD);
 
 						mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.putObject, _Unsafe.putObject_D, false);
+					} else if (fi.isOneDimensionPrimitiveArray()) {
+						doPrimitiveArray(mv, fi, storeIx, false);
 					} else if (fi.isWrapper()) {
 						mv.visitVarInsn(ALOAD, U_OFFSET);
 						mv.visitVarInsn(ALOAD, REF_OFFSET);
@@ -481,6 +555,8 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 
 			CachedField cf = null;
 			SpecialField sf = null;
+			boolean oneDArray = fi.isOneDimensionPrimitiveArray();
+			String iN = fi.getTypeInternalName();
 
 			// primitives will not consume the context
 			if (!fi.isEnum() && !fi.isWrapper() && !fi.isPrimitive()) {
@@ -488,30 +564,22 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					cf = serializerNameFor(fi.asmType(), fi.isCompressed());
 
 					cf.onStack(mv, targetName);
-				} else if (fi.isSpecial()) {
+				} else if (fi.isSpecial() && !oneDArray) {
 					sf = specialFieldFor(fi);
 
 					sf.onStack(mv, targetName, fi);
 				}
 
-				mv.visitVarInsn(ALOAD, CTX_OFFSET);
+				if (!oneDArray) {
+					mv.visitVarInsn(ALOAD, CTX_OFFSET);
+				}
 			}
 
-			mv.visitVarInsn(ALOAD, STR_OFFSET);
-
+			if (!oneDArray) {
+				mv.visitVarInsn(ALOAD, STR_OFFSET);
+				pushForRead(mv, fi);
+			}
 			// push value on stack
-
-			String iN = fi.getTypeInternalName();
-
-			if (fi.isReadAccessible(root.basic())) {
-				mv.visitVarInsn(ALOAD, REF_OFFSET);
-				mv.visitFieldInsn(GETFIELD, fi.owner().name, fi.name, fi.desc);
-			} else {
-				mv.visitVarInsn(ALOAD, U_OFFSET);
-				mv.visitVarInsn(ALOAD, REF_OFFSET);
-				mv.visitLdcInsn(fi.objectFieldOffset());
-				mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.getObject, _Unsafe.getObject_D, false);
-			}
 
 			// now we got [CachedSerializer?] [Context?] [_Sink] [Value]
 
@@ -519,6 +587,30 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 				mv.visitTypeInsn(CHECKCAST, iN);
 				mv.visitMethodInsn(INVOKEVIRTUAL, iN, "ordinal", "()I", false);
 				mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.name, _Sink.packI, _Sink.packI_D, false);
+			} else if (oneDArray) {
+				ExtendedType at = fi.type().basicComponentType();
+
+				if (fi.disregardReference()) {
+					mv.visitVarInsn(ALOAD, STR_OFFSET);
+					pushForRead(mv, fi);
+					mv.visitTypeInsn(CHECKCAST, iN);
+					mv.visitInsn(ARRAYLENGTH);
+					mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.Compressor, _Sink.packI, _Sink.packI_D, false);
+
+					mv.visitVarInsn(ALOAD, STR_OFFSET);
+					pushForRead(mv, fi);
+					mv.visitTypeInsn(CHECKCAST, iN);
+					mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.name, _Sink.write, "(" + fi.type().desc + ")V", false);
+				} else {
+					mv.visitVarInsn(ALOAD, STR_OFFSET);
+					mv.visitVarInsn(ALOAD, CTX_OFFSET);
+					mv.visitLdcInsn(at.getSort());
+					pushForRead(mv, fi);
+					pushForRead(mv, fi);
+					mv.visitTypeInsn(CHECKCAST, iN);
+					mv.visitInsn(ARRAYLENGTH);
+					mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.name, _Sink.writePrimitiveArray, _Sink.writePrimitiveArrayAndRef_D, false);
+				}
 			} else if (fi.isWrapper()) {
 				mv.visitTypeInsn(CHECKCAST, iN);
 				Symbols.unboxAndWrite(mv, fi);
@@ -550,7 +642,7 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 			return;
 		}
 
-		int baseOffset = unsafeOnStack ? 3 : 2;
+		final int baseOffset = unsafeOnStack ? 3 : 2;
 		int ix = baseOffset + 1;
 
 		// copy to local vars
@@ -604,6 +696,29 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 					mv.visitVarInsn(ALOAD, ix);
 					mv.visitMethodInsn(INVOKEVIRTUAL, iN, "ordinal", "()I", false);
 					mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.Compressor, _Sink.packI, _Sink.packI_D, false);
+				} else if (fi.isOneDimensionPrimitiveArray()) {
+
+					if (fi.disregardReference()) {
+
+						mv.visitVarInsn(ALOAD, STR_OFFSET);
+						mv.visitVarInsn(ALOAD, ix);
+						mv.visitInsn(ARRAYLENGTH);
+						mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.Compressor, _Sink.packI, _Sink.packI_D, false);
+
+						mv.visitVarInsn(ALOAD, STR_OFFSET);
+						mv.visitVarInsn(ALOAD, ix);
+						mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.name, _Sink.write, "(" + fi.type().desc + ")V", false);
+					} else {
+						ExtendedType at = fi.type().basicComponentType();
+
+						mv.visitVarInsn(ALOAD, STR_OFFSET);
+						mv.visitVarInsn(ALOAD, CTX_OFFSET);
+						mv.visitLdcInsn(at.getSort());
+						mv.visitVarInsn(ALOAD, ix);
+						mv.visitVarInsn(ALOAD, ix);
+						mv.visitInsn(ARRAYLENGTH);
+						mv.visitMethodInsn(INVOKEVIRTUAL, _Sink.name, _Sink.writePrimitiveArray, _Sink.writePrimitiveArrayAndRef_D, false);
+					}
 				} else if (fi.isWrapper()) {
 					mv.visitVarInsn(ALOAD, STR_OFFSET);
 					mv.visitVarInsn(ALOAD, ix);
@@ -703,6 +818,18 @@ public final class InheritanceGraphClassAdapterV3 extends GraphClassAdapter {
 			} else {
 				Symbols.writeInaccessiblePrimitive(mv, STR_OFFSET, REF_OFFSET, U_OFFSET, type, fi.objectFieldOffset(), fi.isCompressed());
 			}
+		}
+	}
+
+	void pushForRead(MethodVisitor mv, FieldInfo fi) {
+		if (fi.isReadAccessible(root.basic())) {
+			mv.visitVarInsn(ALOAD, REF_OFFSET);
+			mv.visitFieldInsn(GETFIELD, fi.owner().name, fi.name, fi.desc);
+		} else {
+			mv.visitVarInsn(ALOAD, U_OFFSET);
+			mv.visitVarInsn(ALOAD, REF_OFFSET);
+			mv.visitLdcInsn(fi.objectFieldOffset());
+			mv.visitMethodInsn(INVOKEVIRTUAL, _Unsafe.name, _Unsafe.getObject, _Unsafe.getObject_D, false);
 		}
 	}
 

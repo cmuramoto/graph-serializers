@@ -49,4 +49,8 @@ public interface _Context {
 	String intern = "intern";
 
 	String unintern = "unintern";
+
+	String mark = "mark";
+
+	String mark_D = "(Ljava/lang/Object;I)V";
 }

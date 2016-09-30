@@ -205,7 +205,7 @@ public final class Source extends InputStream implements Closeable, DataInput {
 		}
 	}
 
-	private void inflate(boolean[] o) {
+	public void inflate(boolean[] o) {
 		int loops = readVarInt();
 
 		int ix = 0;

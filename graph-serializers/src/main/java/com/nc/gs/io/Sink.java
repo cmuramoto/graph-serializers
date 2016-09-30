@@ -13,13 +13,18 @@ import java.nio.MappedByteBuffer;
 
 import org.objectweb.asm.Type;
 
-import sun.misc.Unsafe;
-
+import com.nc.gs.core.Context;
 import com.nc.gs.util.Bits;
 import com.nc.gs.util.Utils;
 
+import sun.misc.Unsafe;
+
 @SuppressWarnings("restriction")
 public final class Sink extends OutputStream implements DataOutput, Closeable {
+
+	static final long COPY_THRESHOLD = 1024L * 1024L;
+
+	static final long BASE = ARRAY_CHAR_BASE_OFFSET;
 
 	public static Sink of(MappedByteBuffer bb) {
 		Sink s = new Sink(Utils.address(bb), bb.capacity());
@@ -35,9 +40,6 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		}
 		return target;
 	}
-
-	static final long COPY_THRESHOLD = 1024L * 1024L;
-	static final long BASE = ARRAY_CHAR_BASE_OFFSET;
 
 	byte[] chunk;
 	boolean disposable;
@@ -229,6 +231,10 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		return b;
 	}
 
+	public void write(boolean[] b) throws IOException {
+		this.write(b, 0, b.length);
+	}
+
 	public void write(boolean[] o, int off, int len) {
 		int loops = len >>> 6;
 		int r = len & 63;
@@ -265,12 +271,24 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		Bits.copyFrom(ix(len), v, off, len);
 	}
 
+	public void write(char[] b) throws IOException {
+		this.write(b, 0, b.length);
+	}
+
 	public void write(char[] v, int off, int len) {
 		Bits.copyFrom(ix(len << 1), v, off, len);
 	}
 
+	public void write(double[] b) throws IOException {
+		this.write(b, 0, b.length);
+	}
+
 	public void write(double[] v, int off, int len) {
 		Bits.copyFrom(ix(len << 3), v, off, len);
+	}
+
+	public void write(float[] b) throws IOException {
+		this.write(b, 0, b.length);
 	}
 
 	public void write(float[] v, int off, int len) {
@@ -282,12 +300,24 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putByte(ix(1), (byte) b);
 	}
 
+	public void write(int[] b) throws IOException {
+		this.write(b, 0, b.length);
+	}
+
 	public void write(int[] v, int off, int len) {
 		Bits.copyFrom(ix(len << 2), v, off, len);
 	}
 
+	public void write(long[] b) throws IOException {
+		this.write(b, 0, b.length);
+	}
+
 	public void write(long[] v, int off, int len) {
 		Bits.copyFrom(ix(len << 3), v, off, len);
+	}
+
+	public void write(short[] b) throws IOException {
+		this.write(b, 0, b.length);
 	}
 
 	public void write(short[] v, int off, int len) {
@@ -466,9 +496,45 @@ public final class Sink extends OutputStream implements DataOutput, Closeable {
 		U.putLong(ix(8), v);
 	}
 
+	public void writePrimitiveArray(Context c, int k, Object o, int len) {
+		if (!c.nullSafeVisited(this, o)) {
+			writePrimitiveArray(k, o, len);
+		}
+	}
+
 	public void writePrimitiveArray(int k, Object o) {
 
 		int len = Array.getLength(o);
+		switch (k) {
+		case Type.BOOLEAN:
+			write((boolean[]) o, 0, len);
+			break;
+		case Type.CHAR:
+			write((char[]) o, 0, len);
+			break;
+		case Type.BYTE:
+			write((byte[]) o, 0, len);
+			break;
+		case Type.SHORT:
+			write((short[]) o, 0, len);
+			break;
+		case Type.INT:
+			write((int[]) o, 0, len);
+			break;
+		case Type.FLOAT:
+			write((float[]) o, 0, len);
+			break;
+		case Type.LONG:
+			write((long[]) o, 0, len);
+			break;
+		case Type.DOUBLE:
+			write((double[]) o, 0, len);
+			break;
+		}
+	}
+
+	public void writePrimitiveArray(int k, Object o, int len) {
+		writeVarInt(len);
 		switch (k) {
 		case Type.BOOLEAN:
 			write((boolean[]) o, 0, len);

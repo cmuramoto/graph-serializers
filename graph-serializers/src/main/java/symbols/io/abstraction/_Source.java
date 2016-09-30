@@ -48,8 +48,12 @@ public interface _Source {
 	String unpackD_D = getD_D;
 	String mark = "mark";
 
+	String inflatePrimiteArray = "inflatePrimiteArray";
+	String inflatePrimiteArray_D = "(ILjava/lang/Object;)V";
+
 	String mark_D = "()V";
 	String reset = "reset";
 	String reset_D = "()V";
+	String inflate = "inflate";
 
 }

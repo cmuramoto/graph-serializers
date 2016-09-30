@@ -1,5 +1,7 @@
 package symbols.io.abstraction;
 
+import symbols.java.lang._Object;
+
 public interface _Sink {
 	String name = "com/nc/gs/io/Sink";
 	String desc = "Lcom/nc/gs/io/Sink;";
@@ -43,5 +45,11 @@ public interface _Sink {
 	String packD = "writeVarDouble";
 	String packD_D = putD_D;
 
+	String writePrimitiveArray = "writePrimitiveArray";
+
+	String writePrimitiveArray_D = "(ILjava/lang/Object;)V";
+
 	String bitMapGuard = "guard";
+	String write = "write";
+	String writePrimitiveArrayAndRef_D = "(" + _Context.desc + "I" + _Object.desc + "I" + ")V";
 }

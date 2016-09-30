@@ -385,11 +385,11 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 	public String name;
 
 	public String desc;
+
 	public String signature;
 	public long offset;
 	final ExtendedType owner;
 	ExtendedType type;
-
 	Object hierarchy;
 
 	/**
@@ -850,6 +850,14 @@ public final class FieldInfo extends FieldVisitor implements Comparable<FieldInf
 			}
 		}
 		return rv;
+	}
+
+	public boolean isOneDimensionPrimitiveArray() {
+		if (type.dimension() == 1) {
+			return basicComponentType().isPrimitive();
+		}
+
+		return false;
 	}
 
 	public boolean isPrimitive() {
